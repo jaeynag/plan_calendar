@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Plan Cal</title>
+
+  <!-- 네가 기존에 쓰던 스타일 유지 -->
+  <link rel="stylesheet" href="./static/css/style.css"/>
+
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- ⚠️ anon 키는 공개되어도 되는 키(=publishable)라 정적 배포에 넣는 구조가 일반적임.
+       대신 RLS 반드시 걸려 있어야 함. -->
+  <script>
+    window.__SUPABASE_URL__ = "https://xotldfursmoxnmytdemx.supabase.co";
+    window.__SUPABASE_ANON_KEY__ = "sb_publishable_VyoL59Ap96ZAu5vOo9Z6OA_G0aqfeaG";
+  </script>
+</head>
+
+<body>
+  <div class="container">
+    <header class="topbar">
+      <div class="left">
+        <div class="title">Plan Cal</div>
+        <div class="subtitle" id="ymTitle"></div>
+      </div>
+      <div class="right">
+        <button id="btnPrev" class="nav-btn" type="button">이전</button>
+        <button id="btnNext" class="nav-btn" type="button">다음</button>
+        <button id="btnLogout" class="nav-btn danger hidden" type="button">로그아웃</button>
+      </div>
+    </header>
+
+    <!-- 로그인 카드 -->
+    <section id="loginCard" class="card hidden">
+      <div class="subtitle" style="margin-bottom:8px;">로그인</div>
+
+      <label class="field">
+        <span>이메일</span>
+        <input id="email" type="email" placeholder="you@example.com" />
+      </label>
+
+      <label class="field">
+        <span>비밀번호</span>
+        <input id="password" type="password" placeholder="••••••••" />
+      </label>
+
+      <div class="row">
+        <button id="btnSignIn" class="primary" type="button">로그인</button>
+        <button id="btnSignUp" class="nav-btn" type="button">회원가입</button>
+      </div>
+
+      <div id="msg" class="hint"></div>
+    </section>
+
+    <!-- 앱 본문 -->
+    <section id="appShell" class="hidden">
+      <section class="toolbar">
+        <button id="btnAddHabit" type="button" class="primary">목표 추가</button>
+        <div id="userBadge" class="badge"></div>
+      </section>
+
+      <section class="calendar">
+        <div class="weekdays">
+          <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+        </div>
+        <div class="grid" id="calGrid"></div>
+      </section>
+
+      <!-- 하단 패널(여기부터 확장) -->
+      <section class="bottom-panel" id="bottomPanel"></section>
+    </section>
+  </div>
+
+  <!-- 체크 모달 -->
+  <div id="checkModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div id="modalDateTitle" class="modal-title"></div>
+        <button class="xbtn" type="button" data-close="1">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="habitList" class="habit-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnSaveDay" class="primary" type="button">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 목표 추가 모달 -->
+  <div id="habitModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">목표 추가</div>
+        <button class="xbtn" type="button" data-close="1">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span>제목</span>
+          <input id="habitTitle" type="text" placeholder="예: 독서" maxlength="40"/>
+        </label>
+
+        <div class="row">
+          <label class="field">
+            <span>이모지</span>
+            <input id="habitEmoji" type="text" value="✅" maxlength="4"/>
+          </label>
+          <label class="field">
+            <span>색상(hex)</span>
+            <input id="habitColor" type="text" value="#FF9500" maxlength="12"/>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="field">
+            <span>기간 단위</span>
+            <select id="habitUnit">
+              <option value="day">일</option>
+              <option value="week">주</option>
+              <option value="month">달</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>기간 값</span>
+            <input id="habitUnitValue" type="number" min="1" value="1"/>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>목표 횟수(기간 내)</span>
+          <input id="habitTarget" type="number" min="1" value="1"/>
+        </label>
+
+        <div class="hint">
+          예) 매일 1회: 단위=일, 값=1, 횟수=1 · 주 4회: 단위=주, 값=1, 횟수=4 · 2달 1회: 단위=달, 값=2, 횟수=1
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCreateHabit" class="primary" type="button">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./static/js/app.js"></script>
+</body>
+</html>
