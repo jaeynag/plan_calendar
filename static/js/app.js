@@ -9,6 +9,11 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+  const STORAGE = {
+    accent: "plan_cal_accent",
+    holidays: (year) => `plan_cal_holidays_KR_${year}`,
+  };
+
   const state = {
     session: null,
     year: null,
@@ -16,6 +21,7 @@
     habits: [],
     logsByDate: {}, // { 'YYYY-MM-DD': [habit_id,...] }
     activeDate: null,
+    holidaysByYear: {}, // { [year]: Set<YYYY-MM-DD> }
   };
 
   // -----------------------------
@@ -56,6 +62,74 @@
   }
 
   // -----------------------------
+  // Theme
+  // -----------------------------
+  function applyAccent(hex) {
+    if (!hex) return;
+    document.documentElement.style.setProperty("--accent", hex);
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem(STORAGE.accent);
+    if (saved) applyAccent(saved);
+
+    const input = $("#themeAccent");
+    if (input) {
+      input.value = saved || getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#111111";
+      input.addEventListener("input", () => {
+        const v = input.value;
+        applyAccent(v);
+        localStorage.setItem(STORAGE.accent, v);
+      });
+    }
+  }
+
+  // -----------------------------
+  // Holidays (KR) - best-effort
+  // -----------------------------
+  async function ensureHolidays(year) {
+    if (state.holidaysByYear[year]) return;
+
+    // 1) localStorage cache
+    const cached = localStorage.getItem(STORAGE.holidays(year));
+    if (cached) {
+      try {
+        const arr = JSON.parse(cached);
+        if (Array.isArray(arr)) {
+          state.holidaysByYear[year] = new Set(arr.filter((x) => typeof x === "string"));
+          return;
+        }
+      } catch (_) { /* ignore */ }
+    }
+
+    // 2) try fetch (Nager.Date public API)
+    try {
+      const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/KR`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Holiday fetch failed: ${res.status}`);
+      const data = await res.json();
+
+      const dates = (Array.isArray(data) ? data : [])
+        .map((x) => x?.date)
+        .filter((d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d));
+
+      const set = new Set(dates);
+      state.holidaysByYear[year] = set;
+      localStorage.setItem(STORAGE.holidays(year), JSON.stringify([...set]));
+    } catch (e) {
+      // 네트워크/CORS/차단 등으로 실패 가능. 실패해도 앱은 돌아가야 함.
+      console.warn(e);
+      state.holidaysByYear[year] = new Set();
+    }
+  }
+
+  function isHoliday(dateISO) {
+    const y = parseInt(dateISO.slice(0, 4), 10);
+    const set = state.holidaysByYear[y];
+    if (!set) return false;
+    return set.has(dateISO);
+  }
+
+  // -----------------------------
   // Auth
   // -----------------------------
   async function refreshSession() {
@@ -69,22 +143,19 @@
 
     const loginCard = $("#loginCard");
     const appShell = $("#appShell");
-    const btnLogout = $("#btnLogout");
 
     if (!sess) {
       show(loginCard);
       hide(appShell);
-      hide(btnLogout);
-      $("#userBadge").textContent = "";
       return false;
     }
 
     hide(loginCard);
     show(appShell);
-    show(btnLogout);
 
     const email = sess.user?.email || "";
-    $("#userBadge").textContent = email ? `로그인: ${email}` : "로그인됨";
+    const badge = $("#userBadge");
+    if (badge) badge.textContent = email ? `로그인: ${email}` : "로그인됨";
     return true;
   }
 
@@ -118,7 +189,7 @@
       setTimeout(() => $("#signupEmail")?.focus(), 0);
     });
 
-    // 회원가입: 실행 (메일/비번/비번확인)
+    // 회원가입 실행
     $("#btnDoSignUp").addEventListener("click", async () => {
       $("#signupMsg").textContent = "";
 
@@ -130,12 +201,10 @@
         $("#signupMsg").textContent = "메일/비번/비번확인까지 다 넣어.";
         return;
       }
-
       if (password.length < 6) {
         $("#signupMsg").textContent = "비번은 6자 이상으로.";
         return;
       }
-
       if (password !== password2) {
         $("#signupMsg").textContent = "비번이랑 비번확인이 안 맞는다.";
         return;
@@ -144,7 +213,7 @@
       const { data, error } = await sb.auth.signUp({ email, password });
       if (error) { $("#signupMsg").textContent = error.message; return; }
 
-      // Confirm email OFF면 보통 session이 바로 생김
+      // Confirm email OFF면 session이 바로 생길 수 있음
       if (data?.session) {
         $("#signupMsg").textContent = "가입 완료. 바로 로그인됨.";
         closeAllModals();
@@ -152,7 +221,7 @@
         return;
       }
 
-      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. Confirm email OFF 저장됐는지 확인. 일단 로그인 눌러.";
+      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. Confirm email OFF 확인. 일단 로그인 눌러.";
       $("#email").value = email;
       $("#password").value = "";
     });
@@ -160,6 +229,7 @@
     // 로그아웃
     $("#btnLogout").addEventListener("click", async () => {
       await sb.auth.signOut();
+      closeAllModals();
       await ensureAuthedOrShowLogin();
     });
   }
@@ -218,16 +288,21 @@
         continue;
       }
 
+      const dow = new Date(y, m - 1, dayNum).getDay(); // 0=sun,6=sat
       cell.className = "day";
+      if (dow === 0 || dow === 6) cell.classList.add("weekend");
+
       cell.setAttribute("data-day", String(dayNum));
+
+      const date = isoDate(y, m, dayNum);
+      if (isHoliday(date)) cell.classList.add("holiday");
 
       const top = document.createElement("div");
       top.className = "day-num";
       top.textContent = String(dayNum);
 
       const emojis = document.createElement("div");
-      emojis.className = "day-dots"; // class명 유지
-      const date = isoDate(y, m, dayNum);
+      emojis.className = "day-dots";
       emojis.setAttribute("data-date", date);
 
       cell.appendChild(top);
@@ -249,7 +324,6 @@
   // ✅ 점 대신 이모지 표시
   function renderEmojis() {
     $$(".day-dots").forEach((el) => {
-      // count class 초기화
       el.className = "day-dots";
 
       const date = el.getAttribute("data-date");
@@ -260,7 +334,6 @@
         return;
       }
 
-      // 같은 습관이 중복 들어와도 1번만 표시
       const uniq = Array.from(new Set(ids));
       const emojis = uniq.map(getEmojiByHabitId);
 
@@ -268,7 +341,6 @@
       const clamp = Math.min(Math.max(count, 1), 15);
       el.classList.add(`emoji-count-${clamp}`);
 
-      // 전부 표시(많으면 wrap + 작은 폰트로)
       el.innerHTML = emojis.map((e) => `<span class="e" aria-hidden="true">${escapeHtml(e)}</span>`).join("");
     });
   }
@@ -317,10 +389,10 @@
   }
 
   async function reloadAll() {
+    await ensureHolidays(state.year);
     await loadHabits();
     await loadLogsForMonth();
-    renderEmojis();
-    markTodayAndSelected();
+    renderCalendarGrid(); // holiday/weekend class 반영 포함
   }
 
   // -----------------------------
@@ -388,7 +460,6 @@
     const toDelete = [...existing].filter((x) => !incoming.has(x));
     const toUpsert = [...incoming];
 
-    // delete unchecked
     if (toDelete.length) {
       const { error } = await sb
         .from("habit_logs")
@@ -400,7 +471,6 @@
       if (error) throw error;
     }
 
-    // upsert checked
     if (toUpsert.length) {
       const payload = toUpsert.map((hid) => ({ habit_id: hid, check_date: date, user_id: userId }));
       const { error } = await sb
@@ -430,7 +500,6 @@
 
     if (!title) { alert("제목부터 써라."); return; }
 
-    // 하위호환 frequency_days(대충)
     let frequency_days = period_value;
     if (period_unit === "week") frequency_days = 7 * period_value;
     if (period_unit === "month") frequency_days = 30 * period_value;
@@ -462,22 +531,22 @@
   async function gotoPrevMonth() {
     if (state.month === 1) { state.month = 12; state.year -= 1; }
     else state.month -= 1;
-    renderCalendarGrid();
-    if (state.session) await reloadAll();
+
+    await reloadAll();
   }
 
   async function gotoNextMonth() {
     if (state.month === 12) { state.month = 1; state.year += 1; }
     else state.month += 1;
-    renderCalendarGrid();
-    if (state.session) await reloadAll();
+
+    await reloadAll();
   }
 
   // -----------------------------
   // Bind UI
   // -----------------------------
   function bindUI() {
-    // backdrop / x 버튼 닫기
+    // modal close
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
 
     $("#btnSaveDay").addEventListener("click", () => {
@@ -503,6 +572,9 @@
     $("#btnNext").addEventListener("click", () => {
       gotoNextMonth().catch((e) => { console.error(e); alert("이동 실패"); });
     });
+
+    const settingsBtn = $("#btnSettings");
+    if (settingsBtn) settingsBtn.addEventListener("click", () => openModal("#settingsModal"));
   }
 
   async function afterLogin() {
@@ -515,13 +587,14 @@
   // Boot
   // -----------------------------
   async function main() {
+    initTheme();
     initYearMonth();
     bindAuthUI();
     bindUI();
-    renderCalendarGrid();
 
     const ok = await ensureAuthedOrShowLogin();
     if (!ok) return;
+
     await reloadAll();
   }
 
