@@ -8,6 +8,14 @@
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const on = (sel, type, handler, opts) => {
+    const el = $(sel);
+    if (!el) { console.warn("[bind] missing", sel); return null; }
+    el.addEventListener(type, handler, opts);
+    return el;
+  };
+  const setText = (sel, text) => { const el = $(sel); if (el) el.textContent = text; };
+
 
   const state = {
     session: null,
@@ -74,7 +82,7 @@
   }
 
   function bindLogin() {
-    $("#btnSignIn").addEventListener("click", async () => {
+    on("#btnSignIn", "click", async () => {
       $("#msg").textContent = "";
       const email = ($("#email").value || "").trim();
       const password = $("#password").value || "";
@@ -90,7 +98,7 @@
     });
 
     // ✅ 회원가입: Confirm email OFF 기준(가입 즉시 로그인 기대)
-    $("#btnSignUp").addEventListener("click", async () => {
+    on("#btnSignUp", "click", async () => {
       $("#msg").textContent = "";
       const email = ($("#email").value || "").trim();
       const password = $("#password").value || "";
@@ -113,7 +121,7 @@
       $("#msg").textContent = "가입 완료. 이제 로그인 버튼 눌러.";
     });
 
-    $("#btnLogout").addEventListener("click", async () => {
+    on("#btnLogout", "click", async () => {
       await sb.auth.signOut();
       await ensureAuthedOrShowLogin();
     });
@@ -177,7 +185,6 @@
     }
 
     renderDots();
-    applyDayDotsLayout();
   }
 
   function renderDots() {
@@ -188,41 +195,6 @@
     });
   }
 
-
-  function applyDayDotsLayout() {
-    $$(".day-dots").forEach((el) => {
-      // count children icons first (photo/emoji)
-      const iconChildren = el.querySelectorAll(".icon-img, .icon-emoji");
-      let count = iconChildren.length;
-
-      // fallback: if text dots/emoji only
-      if (!count) {
-        const txt = (el.textContent || "").trim();
-        if (txt) {
-          // count bullets (•) safely
-          count = [...txt].filter((ch) => ch === "•").length || [...txt].length;
-        }
-      }
-
-      el.classList.remove("count-1", "count-2", "count-3p");
-
-      if (count === 1) el.classList.add("count-1");
-      else if (count === 2) el.classList.add("count-2");
-      else if (count >= 3) el.classList.add("count-3p");
-
-      // Set per-cell icon size so 1 icon fits nicely without cropping
-      // (CSS also has defaults; this just refines)
-      const cellW = el.clientWidth || 0;
-      if (count === 1 && cellW) {
-        el.style.setProperty("--i", `${Math.min(54, Math.max(28, cellW - 10))}px`);
-      } else if (count === 2 && cellW) {
-        el.style.setProperty("--i", `${Math.min(34, Math.max(20, cellW - 14))}px`);
-      } else if (count >= 3 && cellW) {
-        const gap = 2;
-        el.style.setProperty("--i", `${Math.min(22, Math.max(16, Math.floor((cellW - gap - 6) / 2)))}px`);
-      }
-    });
-  }
   // -----------------------------
   // Supabase direct CRUD
   // -----------------------------
@@ -270,7 +242,6 @@
     await loadHabits();
     await loadLogsForMonth();
     renderDots();
-    applyDayDotsLayout();
   }
 
   // -----------------------------
@@ -359,7 +330,6 @@
 
     state.logsByDate[date] = [...incoming];
     renderDots();
-    applyDayDotsLayout();
     closeAllModals();
   }
 
@@ -425,27 +395,27 @@
   function bindUI() {
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
 
-    $("#btnSaveDay").addEventListener("click", () => {
+    on("#btnSaveDay", "click", () => {
       saveLogsForActiveDate().catch((e) => {
         console.error(e);
         alert("저장 실패. 콘솔 보자.");
       });
     });
 
-    $("#btnAddHabit").addEventListener("click", () => openModal("#habitModal"));
+    on("#btnAddHabit", "click", () => openModal("#habitModal"));
 
-    $("#btnCreateHabit").addEventListener("click", () => {
+    on("#btnCreateHabit", "click", () => {
       createHabit().catch((e) => {
         console.error(e);
         alert("목표 추가 실패. 콘솔 보자.");
       });
     });
 
-    $("#btnPrev").addEventListener("click", () => {
+    on("#btnPrev", "click", () => {
       gotoPrevMonth().catch((e) => { console.error(e); alert("이동 실패"); });
     });
 
-    $("#btnNext").addEventListener("click", () => {
+    on("#btnNext", "click", () => {
       gotoNextMonth().catch((e) => { console.error(e); alert("이동 실패"); });
     });
   }
