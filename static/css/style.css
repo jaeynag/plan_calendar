@@ -1,8 +1,7 @@
-/* Plan Calendar style v13 (premium)
-   - Less "table", more "app"
-   - Softer separators, cleaner typography, better spacing
-   - Keeps square day cell corners (요청 유지)
-   - Works with existing HTML/JS 그대로
+/* Plan Calendar style v14 (premium + tighter cells)
+   - iOS system font stack (SF Pro)
+   - day cell padding/blank space reduced
+   - icon grid kept 2 columns, 2 rows
 */
 
 :root{
@@ -15,29 +14,27 @@
   --cell-bottom: #f7f8fb;
 
   --border: rgba(17,17,17,0.08);
-  --border2: rgba(17,17,17,0.12);
   --muted: rgba(17,17,17,0.55);
-  --shadow: 0 8px 22px rgba(0,0,0,0.06);
 
   --sun: #e11d48;
   --sat: #2563eb;
   --holiday: #dc2626;
 
-  /* premium knobs */
   --radius-card: 22px;
   --radius-shell: 26px;
-  --radius-btn: 14px;
 
-  --grid-sep: rgba(17,17,17,0.055); /* ultra-subtle */
+  --grid-sep: rgba(17,17,17,0.055);
   --grid-gap: 1px;
 
   --header-h: 66px;
   --weekday-h: 34px;
 
-  --day-pad: 10px;
+  /* tighter layout */
+  --day-pad: 6px;
   --daynum-size: 12px;
 
-  --icon-area: 64px;  /* 2줄 아이콘 공간 */
+  /* icons area: smaller but still 2 rows */
+  --icon-area: 46px;
 }
 
 *{ box-sizing: border-box; }
@@ -46,11 +43,11 @@ html, body { height: 100%; }
 body{
   margin:0;
   color: var(--text);
-  font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "맑은 고딕", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+               system-ui, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* 고급스러운 아주 약한 그라데이션 */
   background:
     radial-gradient(1200px 800px at 50% -200px, rgba(0,0,0,0.045), transparent 55%),
     radial-gradient(900px 700px at 0% 110%, rgba(0,0,0,0.035), transparent 55%),
@@ -72,7 +69,7 @@ button{
   -webkit-tap-highlight-color: transparent;
 }
 
-.hint{ font-size: 12px; color: var(--muted); margin-top: 8px; }
+.hint{ font-size: 12px; color: color-mix(in srgb, var(--text) 45%, transparent); margin-top: 8px; }
 
 /* ---------- Auth card ---------- */
 .card{
@@ -87,8 +84,8 @@ button{
 #loginCard.card{ margin: 14px 12px 18px; }
 
 .login-title{
-  font-family: "Jua", "Nunito", sans-serif;
   font-size: 22px;
+  font-weight: 800;
   letter-spacing: -0.02em;
   margin-bottom: 10px;
 }
@@ -129,7 +126,7 @@ button{
   color: var(--surface);
   padding: 12px 14px;
   border-radius: 16px;
-  font-weight: 900;
+  font-weight: 800;
   box-shadow: 0 10px 20px rgba(0,0,0,0.12);
 }
 .primary:active{ transform: scale(0.985); }
@@ -138,7 +135,7 @@ button{
   background: rgba(0,0,0,0.055);
   padding: 12px 14px;
   border-radius: 16px;
-  font-weight: 900;
+  font-weight: 700;
 }
 .ghostbtn:hover{ background: rgba(0,0,0,0.085); }
 .ghostbtn:active{ transform: scale(0.985); }
@@ -151,10 +148,10 @@ button{
   color: #e11d48;
   padding: 12px 14px;
   border-radius: 16px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
-/* ---------- Calendar shell (premium card-like) ---------- */
+/* ---------- Calendar shell ---------- */
 #appShell .calendar-shell{
   height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   padding: 12px 12px 14px;
@@ -176,7 +173,7 @@ button{
   #appShell .calendar-shell{ margin: 0; }
 }
 
-/* ---------- Header (clean, premium) ---------- */
+/* ---------- Header ---------- */
 .cal-header{
   height: var(--header-h);
   display:grid;
@@ -188,7 +185,7 @@ button{
 
 .cal-year{ display:flex; align-items:flex-start; min-width: 60px; }
 .year-label{
-  font-weight: 900;
+  font-weight: 800;
   font-size: 13px;
   letter-spacing: 0.02em;
   color: color-mix(in srgb, var(--text) 35%, transparent);
@@ -202,9 +199,8 @@ button{
 }
 
 .month-title{
-  font-family: "Jua", "Nunito", sans-serif;
   font-size: clamp(32px, 8.6vw, 44px);
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
   padding: 0 10px;
@@ -252,7 +248,7 @@ button{
   grid-template-columns: repeat(7, 1fr);
   padding: 2px 6px 8px;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0.02em;
   color: color-mix(in srgb, var(--text) 40%, transparent);
 }
@@ -260,28 +256,29 @@ button{
 .weekdays .sun{ color: color-mix(in srgb, var(--sun) 88%, transparent); }
 .weekdays .sat{ color: color-mix(in srgb, var(--sat) 88%, transparent); }
 
-/* ---------- Grid (no banding, just subtle hairlines) ---------- */
+/* ---------- Grid ---------- */
 .grid{
   flex: 1;
   display:grid;
   grid-template-columns: repeat(7, 1fr);
   gap: var(--grid-gap);
   background: var(--grid-sep);
-  border-radius: 18px; /* outer only */
+  border-radius: 18px;
   overflow: hidden;
   min-width: 0;
 }
 
-/* ---------- Day cell (premium minimal, square corners 유지) ---------- */
+/* ---------- Day cell (square corners) ---------- */
 .day{
-  border-radius: 0; /* 요청 유지 */
+  border-radius: 0;
 
+  /* shorter top area => less empty space above number */
   background:
     linear-gradient(
       to bottom,
       color-mix(in srgb, var(--cell-top) 96%, transparent) 0%,
-      color-mix(in srgb, var(--cell-top) 96%, transparent) 46%,
-      color-mix(in srgb, var(--cell-bottom) 96%, transparent) 46%,
+      color-mix(in srgb, var(--cell-top) 96%, transparent) 28%,
+      color-mix(in srgb, var(--cell-bottom) 96%, transparent) 28%,
       color-mix(in srgb, var(--cell-bottom) 96%, transparent) 100%
     );
 
@@ -295,44 +292,39 @@ button{
   touch-action: manipulation;
   transition: box-shadow 140ms ease, transform 120ms ease, background 140ms ease;
 }
-
 .day:active{ transform: scale(0.995); }
 
 .day.empty{
   background: color-mix(in srgb, var(--surface) 70%, var(--bg));
 }
 
-/* number: refined */
 .day-num{
   display:flex;
   justify-content:flex-end;
   align-items:center;
   font-size: var(--daynum-size);
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1;
+  padding-top: 1px;
   color: color-mix(in srgb, var(--text) 76%, transparent);
 }
-
 .day.sun .day-num{ color: var(--sun); }
 .day.sat .day-num{ color: var(--sat); }
 .day.holiday .day-num{ color: var(--holiday); }
 
-/* today: clean ring */
 .day.today{
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text) 20%, transparent);
 }
-
-/* selected: softer */
 .day.selected{
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text) 14%, transparent);
 }
 
-/* ---------- Icons (2 columns, 내려가기) ---------- */
+/* ---------- Icons (2 columns, wrap down) ---------- */
 .day-dots{
   display:grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-rows: 1fr;
-  gap: 8px;
+  gap: 6px;
   align-items:center;
   justify-items:center;
   align-content:start;
@@ -350,23 +342,23 @@ button{
 }
 
 .icon-emoji{
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
   filter: saturate(1.05);
 }
-.day-dots.single .icon-emoji{ font-size: 34px; }
+.day-dots.single .icon-emoji{ font-size: 32px; }
 
 .icon-img{
-  width: 24px;
-  height: 24px;
-  border-radius: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9px;
   object-fit: cover;
   display:block;
   box-shadow: 0 6px 18px rgba(0,0,0,0.14);
 }
 .day-dots.single .icon-img{
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 16px;
 }
 
@@ -401,9 +393,8 @@ button{
 .modal-footer{ border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent); }
 
 .modal-title{
-  font-family: "Jua", "Nunito", sans-serif;
-  font-size: 20px;
-  font-weight: 900;
+  font-size: 18px;
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 
@@ -437,7 +428,7 @@ button{
 
 .habit-left{ display:flex; align-items:center; gap: 10px; min-width:0; }
 .habit-title{
-  font-weight: 900;
+  font-weight: 800;
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
@@ -465,15 +456,54 @@ button{
 }
 .progress-left{ display:flex; align-items:center; gap: 10px; min-width:0; }
 .progress-title{
-  font-weight: 900;
+  font-weight: 800;
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .progress-right{ text-align:right; }
-.progress-count{ font-weight: 900; font-size: 14px; }
-.progress-sub{ font-size: 12px; color: var(--muted); }
+.progress-count{ font-weight: 800; font-size: 14px; }
+.progress-sub{ font-size: 12px; color: color-mix(in srgb, var(--text) 55%, transparent); }
+
+/* ---- Habit manage section ---- */
+.divider{
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+  margin: 14px 0;
+}
+
+.subttl{
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--text) 55%, transparent);
+  margin-bottom: 8px;
+}
+
+.habit-manage-list{ display:flex; flex-direction: column; gap: 10px; }
+
+.habit-manage-row{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface2) 92%, transparent);
+}
+
+.habit-manage-right{ display:flex; align-items:center; gap: 8px; }
+
+.delbtn{
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(225,29,72,0.10);
+  color: #e11d48;
+  font-weight: 800;
+}
+.delbtn:active{ transform: scale(0.985); }
 
 /* ---------- Photo preview ---------- */
 .photo-preview{
@@ -498,8 +528,8 @@ button{
 
 /* ---------- Settings ---------- */
 .setting-email{ display:flex; flex-direction: column; gap: 4px; }
-.setting-email-label{ font-size: 12px; color: var(--muted); font-weight: 900; }
-.setting-email-value{ font-size: 14px; font-weight: 900; word-break: break-all; }
+.setting-email-label{ font-size: 12px; color: color-mix(in srgb, var(--text) 55%, transparent); font-weight: 800; }
+.setting-email-value{ font-size: 14px; font-weight: 800; word-break: break-all; }
 
 .setting-row{
   display:flex;
@@ -508,7 +538,7 @@ button{
   gap: 12px;
   padding: 10px 0;
 }
-.setting-label{ font-weight: 900; font-size: 14px; }
+.setting-label{ font-weight: 800; font-size: 14px; }
 
 .colorpick{
   width: 56px;
@@ -523,12 +553,6 @@ button{
   display:flex;
   justify-content:flex-end;
   padding-top: 6px;
-}
-
-.divider{
-  height: 1px;
-  background: color-mix(in srgb, var(--border) 80%, transparent);
-  margin: 14px 0;
 }
 
 /* ---------- Cropper stage ---------- */
@@ -560,5 +584,5 @@ button{
   align-items:center;
   gap: 10px;
 }
-.zoomlabel{ font-size: 12px; color: var(--muted); font-weight: 900; }
+.zoomlabel{ font-size: 12px; color: color-mix(in srgb, var(--text) 55%, transparent); font-weight: 800; }
 #zoomRange{ width: 100%; }
