@@ -9,7 +9,7 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-  // ✅ 버킷 이름: 사용자 말대로 habit_icons
+  // ✅ 버킷 이름: 사용자 말대로 habit_icon
   const ICON_BUCKET = "habit_icons";
 
   const THEME_DEFAULT_BG = "#f6f7fb";
@@ -217,6 +217,7 @@
   // -----------------------------
   function openModal(sel) { const el = $(sel); if (el) el.classList.remove("hidden"); }
   function closeAllModals() { $$(".modal").forEach((m) => m.classList.add("hidden")); }
+  function isOpenModal(sel) { const el = $(sel); return !!(el && !el.classList.contains("hidden")); }
 
   // -----------------------------
   // Auth UI
@@ -293,7 +294,8 @@
       resetHabitIconUI();
       $("#habitMsg").textContent = "";
       openModal("#habitModal");
-      setTimeout(() => $("#habitTitle")?.focus(), 0);
+      renderHabitManageList();
+setTimeout(() => $("#habitTitle")?.focus(), 0);
     });
 
     $("#btnOpenProgress").addEventListener("click", async () => {
@@ -594,7 +596,8 @@
     await loadLogsForMonth();
     renderIcons();
     markTodaySelectedHoliday();
-  }
+      if (isOpenModal("#habitModal")) renderHabitManageList();
+}
 
   // -----------------------------
   // Checklist modal
@@ -912,6 +915,119 @@
     closeAllModals();
     await reloadAll();
   }
+
+  // -----------------------------
+  // Habit delete (manage list in 목표 추가)
+  // -----------------------------
+  function renderHabitManageList() {
+    const wrap = $("#habitManageList");
+    if (!wrap) return;
+
+    wrap.innerHTML = "";
+
+    if (!state.habits || state.habits.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "hint";
+      empty.textContent = "등록된 목표가 없다. 위에서 하나 추가해.";
+      wrap.appendChild(empty);
+      return;
+    }
+
+    state.habits.forEach((h) => {
+      const row = document.createElement("div");
+      row.className = "habit-manage-row";
+
+      const left = document.createElement("div");
+      left.className = "habit-left";
+
+      const iconWrap = document.createElement("span");
+      iconWrap.className = "habit-icon";
+
+      if (h.icon_url) {
+        const img = document.createElement("img");
+        img.src = h.icon_url;
+        img.alt = "";
+        iconWrap.appendChild(img);
+      } else {
+        const emo = document.createElement("span");
+        emo.className = "icon-emoji";
+        emo.textContent = h.emoji;
+        iconWrap.appendChild(emo);
+      }
+
+      const title = document.createElement("span");
+      title.className = "habit-title";
+      title.textContent = h.title;
+
+      left.appendChild(iconWrap);
+      left.appendChild(title);
+
+      const right = document.createElement("div");
+      right.className = "habit-manage-right";
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "delbtn";
+      del.textContent = "삭제";
+      del.addEventListener("click", () => {
+        deleteHabit(h.id).catch((e) => {
+          console.error(e);
+          alert("삭제 실패. 콘솔 봐라.");
+        });
+      });
+
+      right.appendChild(del);
+
+      row.appendChild(left);
+      row.appendChild(right);
+      wrap.appendChild(row);
+    });
+  }
+
+  function extractStoragePathFromPublicUrl(url) {
+    if (!url) return null;
+    const needle = `/storage/v1/object/public/${ICON_BUCKET}/`;
+    const idx = url.indexOf(needle);
+    if (idx === -1) return null;
+    return url.slice(idx + needle.length);
+  }
+
+  async function deleteHabit(habitId) {
+    if (!state.session) return;
+
+    const h = (state.habits || []).find((x) => x.id === habitId);
+    const title = h?.title || "이 목표";
+
+    if (!confirm(`${title} 진짜 지울거냐? 기록도 같이 지워진다.`)) return;
+
+    $("#habitMsg").textContent = "";
+
+    // 1) icon file best-effort delete (ignore errors)
+    if (h?.icon_url) {
+      try {
+        const path = extractStoragePathFromPublicUrl(h.icon_url);
+        if (path) {
+          await sb.storage.from(ICON_BUCKET).remove([path]);
+        }
+      } catch (e) {
+        console.warn("icon remove failed (ignored):", e);
+      }
+    }
+
+    // 2) delete habit row (habit_logs cascade)
+    const { error } = await sb.from("habits").delete().eq("id", habitId);
+    if (error) {
+      $("#habitMsg").textContent = `삭제 권한이 없다. Supabase RLS(delete policy) 확인해. (${error.message})`;
+      throw error;
+    }
+
+    await reloadAll();
+
+    // If modals are open, re-render them
+    if (isOpenModal("#habitModal")) renderHabitManageList();
+    if (isOpenModal("#checkModal") && state.activeDate) renderHabitChecklist(state.activeDate);
+  }
+
 
   // Month nav
   async function gotoPrevMonth() {
