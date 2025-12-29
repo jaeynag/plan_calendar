@@ -1,7 +1,8 @@
-/* Plan Calendar style v12 (UI facelift only)
-   - No JS changes required
-   - Softer, app-like look (less "table", more "calendar app")
-   - Keeps: square day corners, 2-col icons, theme variables
+/* Plan Calendar style v13 (premium)
+   - Less "table", more "app"
+   - Softer separators, cleaner typography, better spacing
+   - Keeps square day cell corners (요청 유지)
+   - Works with existing HTML/JS 그대로
 */
 
 :root{
@@ -22,17 +23,21 @@
   --sat: #2563eb;
   --holiday: #dc2626;
 
-  /* UI knobs */
+  /* premium knobs */
   --radius-card: 22px;
+  --radius-shell: 26px;
   --radius-btn: 14px;
 
-  --header-h: 64px;
-  --grid-gap: 1px;                 /* grid separator thickness */
-  --grid-sep: rgba(17,17,17,0.06); /* subtle line color */
+  --grid-sep: rgba(17,17,17,0.055); /* ultra-subtle */
+  --grid-gap: 1px;
 
-  --day-pad: 10px;                 /* day cell padding */
+  --header-h: 66px;
+  --weekday-h: 34px;
+
+  --day-pad: 10px;
   --daynum-size: 12px;
-  --icon-area: 62px;               /* icon area height (2 rows visible) */
+
+  --icon-area: 64px;  /* 2줄 아이콘 공간 */
 }
 
 *{ box-sizing: border-box; }
@@ -40,25 +45,43 @@ html, body { height: 100%; }
 
 body{
   margin:0;
-  background: var(--bg);
   color: var(--text);
   font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "맑은 고딕", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* 고급스러운 아주 약한 그라데이션 */
+  background:
+    radial-gradient(1200px 800px at 50% -200px, rgba(0,0,0,0.045), transparent 55%),
+    radial-gradient(900px 700px at 0% 110%, rgba(0,0,0,0.035), transparent 55%),
+    var(--bg);
+
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 .hidden{ display:none !important; }
-.container{ width: 100%; max-width: 100%; margin: 0; padding: 0; }
+.container{ width:100%; max-width:100%; margin:0; padding:0; }
 
-/* ---------- Common card ---------- */
+button{
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hint{ font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+/* ---------- Auth card ---------- */
 .card{
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow);
+  box-shadow: 0 16px 44px rgba(0,0,0,0.10);
   padding: 16px;
+  backdrop-filter: blur(10px);
 }
 
 #loginCard.card{ margin: 14px 12px 18px; }
@@ -74,56 +97,53 @@ body{
 .field > span{
   display:block;
   font-size: 12px;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--text) 42%, transparent);
   margin-bottom: 6px;
 }
 
 .field input, .field select{
   width:100%;
-  max-width: 100%;
   padding: 12px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 16px;
   font-size: 15px;
   outline: none;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
   color: var(--text);
 }
 
 .field input:focus, .field select:focus{
-  border-color: var(--border2);
-  box-shadow: 0 0 0 4px rgba(0,0,0,0.04);
+  border-color: color-mix(in srgb, var(--text) 18%, transparent);
+  box-shadow: 0 0 0 4px rgba(0,0,0,0.045);
 }
 
-.hint{ font-size: 12px; color: var(--muted); margin-top: 8px; }
-
-button{
-  border: none;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font-family: inherit;
-  -webkit-tap-highlight-color: transparent;
+.login-actions{
+  display:flex;
+  gap: 10px;
+  margin-top: 6px;
 }
+@media (max-width: 420px){ .login-actions{ flex-direction: column; } }
 
 .primary{
-  background: var(--text);
+  background: color-mix(in srgb, var(--text) 94%, transparent);
   color: var(--surface);
   padding: 12px 14px;
   border-radius: 16px;
   font-weight: 900;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.12);
 }
-.primary:hover{ filter: brightness(0.95); }
+.primary:active{ transform: scale(0.985); }
 
 .ghostbtn{
-  background: rgba(0,0,0,0.06);
+  background: rgba(0,0,0,0.055);
   padding: 12px 14px;
   border-radius: 16px;
   font-weight: 900;
 }
-.ghostbtn:hover{ background: rgba(0,0,0,0.10); }
+.ghostbtn:hover{ background: rgba(0,0,0,0.085); }
+.ghostbtn:active{ transform: scale(0.985); }
 
-.fullbtn{ width: 100%; }
+.fullbtn{ width:100%; }
 
 .dangerbtn{
   width: 100%;
@@ -134,67 +154,64 @@ button{
   font-weight: 900;
 }
 
-/* ---------- Calendar shell: feels like a native app ---------- */
+/* ---------- Calendar shell (premium card-like) ---------- */
 #appShell .calendar-shell{
   height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-  padding: 10px 12px 12px;
+  padding: 12px 12px 14px;
   display:flex;
   flex-direction: column;
   overflow: hidden;
 
-  /* subtle "glass" feeling without being tacky */
-  background: color-mix(in srgb, var(--surface) 86%, var(--bg));
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  border-radius: var(--radius-shell);
+  box-shadow: 0 22px 70px rgba(0,0,0,0.12);
+  backdrop-filter: blur(12px);
+
+  margin: 10px 10px 14px;
 }
 
 @media (min-width: 768px){
   .container{ max-width: 920px; margin: 0 auto; padding: 18px 18px 26px; }
-  #appShell .calendar-shell{
-    height: auto;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow);
-  }
+  #appShell .calendar-shell{ margin: 0; }
 }
 
-/* ---------- Header: minimal, not "buttony" ---------- */
+/* ---------- Header (clean, premium) ---------- */
 .cal-header{
   height: var(--header-h);
   display:grid;
   grid-template-columns: 1fr auto 1fr;
   align-items:center;
   gap: 8px;
-  padding: 6px 4px 8px;
+  padding: 6px 4px 10px;
 }
 
 .cal-year{ display:flex; align-items:flex-start; min-width: 60px; }
 .year-label{
   font-weight: 900;
   font-size: 13px;
-  color: color-mix(in srgb, var(--text) 35%, transparent);
   letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--text) 35%, transparent);
 }
 
 .cal-nav{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .month-title{
   font-family: "Jua", "Nunito", sans-serif;
-  font-size: clamp(30px, 8vw, 42px);
+  font-size: clamp(32px, 8.6vw, 44px);
   font-weight: 900;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   line-height: 1;
-  padding: 0 8px;
-  min-width: 140px;
+  padding: 0 10px;
+  min-width: 150px;
   text-align:center;
 }
 
-/* chevrons: borderless, light */
 .navchev{
   width: 36px;
   height: 36px;
@@ -203,50 +220,47 @@ button{
   display:flex;
   align-items:center;
   justify-content:center;
-  color: color-mix(in srgb, var(--text) 72%, transparent);
-  transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+  color: color-mix(in srgb, var(--text) 65%, transparent);
+  background: rgba(0,0,0,0.04);
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
 }
-.navchev:hover{
-  background: rgba(0,0,0,0.05);
-  color: var(--text);
-}
+.navchev:hover{ background: rgba(0,0,0,0.075); color: var(--text); }
 .navchev:active{ transform: scale(0.96); }
 
 .cal-actions{ display:flex; align-items:center; justify-content:flex-end; }
 
-/* settings button: small, blended */
 .settingsbtn{
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.04);
+  background: rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.03);
   display:flex;
   align-items:center;
   justify-content:center;
   font-size: 17px;
-  color: color-mix(in srgb, var(--text) 80%, transparent);
-  transition: transform 120ms ease, background 120ms ease;
+  color: color-mix(in srgb, var(--text) 70%, transparent);
+  transition: background 120ms ease, transform 120ms ease;
 }
-.settingsbtn:hover{ background: rgba(0,0,0,0.09); }
+.settingsbtn:hover{ background: rgba(0,0,0,0.075); }
 .settingsbtn:active{ transform: scale(0.96); }
 
-/* ---------- Weekdays row ---------- */
+/* ---------- Weekdays ---------- */
 .weekdays{
+  height: var(--weekday-h);
   display:grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 0;
-  padding: 6px 2px 10px;
+  padding: 2px 6px 8px;
   font-size: 12px;
-  color: color-mix(in srgb, var(--text) 42%, transparent);
   font-weight: 900;
   letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--text) 40%, transparent);
 }
 .weekdays > div{ text-align:center; }
 .weekdays .sun{ color: color-mix(in srgb, var(--sun) 88%, transparent); }
 .weekdays .sat{ color: color-mix(in srgb, var(--sat) 88%, transparent); }
 
-/* ---------- Grid: softer separators ---------- */
+/* ---------- Grid (no banding, just subtle hairlines) ---------- */
 .grid{
   flex: 1;
   display:grid;
@@ -258,18 +272,19 @@ button{
   min-width: 0;
 }
 
-/* ---------- Day cell: square corners (as requested), less "boxy" ---------- */
+/* ---------- Day cell (premium minimal, square corners 유지) ---------- */
 .day{
+  border-radius: 0; /* 요청 유지 */
+
   background:
     linear-gradient(
       to bottom,
       color-mix(in srgb, var(--cell-top) 96%, transparent) 0%,
-      color-mix(in srgb, var(--cell-top) 96%, transparent) 44%,
-      color-mix(in srgb, var(--cell-bottom) 96%, transparent) 44%,
+      color-mix(in srgb, var(--cell-top) 96%, transparent) 46%,
+      color-mix(in srgb, var(--cell-bottom) 96%, transparent) 46%,
       color-mix(in srgb, var(--cell-bottom) 96%, transparent) 100%
     );
 
-  border-radius: 0; /* keep sharp corners */
   padding: var(--day-pad);
   display:flex;
   flex-direction: column;
@@ -278,47 +293,46 @@ button{
   min-height: 0;
   overflow: hidden;
   touch-action: manipulation;
-  transition: background 140ms ease, box-shadow 140ms ease;
+  transition: box-shadow 140ms ease, transform 120ms ease, background 140ms ease;
 }
+
+.day:active{ transform: scale(0.995); }
 
 .day.empty{
-  background: color-mix(in srgb, var(--surface) 75%, var(--bg));
+  background: color-mix(in srgb, var(--surface) 70%, var(--bg));
 }
 
-/* day number: smaller, cleaner */
+/* number: refined */
 .day-num{
   display:flex;
   justify-content:flex-end;
   align-items:center;
   font-size: var(--daynum-size);
   font-weight: 900;
-  color: color-mix(in srgb, var(--text) 78%, transparent);
   line-height: 1;
+  color: color-mix(in srgb, var(--text) 76%, transparent);
 }
 
-/* weekend colors */
 .day.sun .day-num{ color: var(--sun); }
 .day.sat .day-num{ color: var(--sat); }
 .day.holiday .day-num{ color: var(--holiday); }
 
-/* today: subtle stroke */
+/* today: clean ring */
 .day.today{
-  box-shadow:
-    inset 0 0 0 2px color-mix(in srgb, var(--text) 22%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text) 20%, transparent);
 }
 
-/* selected: softer stroke than today */
+/* selected: softer */
 .day.selected{
-  box-shadow:
-    inset 0 0 0 2px color-mix(in srgb, var(--text) 14%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text) 14%, transparent);
 }
 
-/* ---------- Icons: 2 columns, go down (not sideways) ---------- */
+/* ---------- Icons (2 columns, 내려가기) ---------- */
 .day-dots{
   display:grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-rows: 1fr;
-  gap: 6px;
+  gap: 8px;
   align-items:center;
   justify-items:center;
   align-content:start;
@@ -343,23 +357,23 @@ button{
 .day-dots.single .icon-emoji{ font-size: 34px; }
 
 .icon-img{
-  width: 22px;
-  height: 22px;
-  border-radius: 9px;
+  width: 24px;
+  height: 24px;
+  border-radius: 10px;
   object-fit: cover;
   display:block;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.14);
 }
 .day-dots.single .icon-img{
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 16px;
 }
 
 /* ---------- Modals ---------- */
 .modal.hidden{ display:none; }
 .modal{ position: fixed; inset:0; z-index: 50; }
-.modal-backdrop{ position:absolute; inset:0; background: rgba(0,0,0,0.44); }
+.modal-backdrop{ position:absolute; inset:0; background: rgba(0,0,0,0.46); }
 
 .modal-panel{
   position:absolute;
@@ -367,11 +381,12 @@ button{
   top:50%;
   transform: translate(-50%, -50%);
   width: min(680px, calc(100% - 22px));
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
   border-radius: var(--radius-card);
   overflow:hidden;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.30);
-  border: 1px solid var(--border);
+  box-shadow: 0 40px 120px rgba(0,0,0,0.38);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  backdrop-filter: blur(14px);
 }
 
 .modal-header, .modal-footer{
@@ -381,8 +396,9 @@ button{
   justify-content: space-between;
   gap: 10px;
 }
-.modal-header{ border-bottom: 1px solid var(--border); }
-.modal-footer{ border-top: 1px solid var(--border); }
+
+.modal-header{ border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent); }
+.modal-footer{ border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent); }
 
 .modal-title{
   font-family: "Jua", "Nunito", sans-serif;
@@ -395,17 +411,17 @@ button{
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.06);
+  background: rgba(0,0,0,0.05);
   font-size: 20px;
   display:flex;
   align-items:center;
   justify-content:center;
 }
-.xbtn:hover{ background: rgba(0,0,0,0.10); }
+.xbtn:hover{ background: rgba(0,0,0,0.09); }
 
-.modal-body{ padding: 12px 14px; max-height: 66vh; overflow:auto; }
+.modal-body{ padding: 12px 14px; max-height: 70vh; overflow:auto; }
 
-/* ---------- Habit list rows ---------- */
+/* ---------- Lists ---------- */
 .habit-list{ display:flex; flex-direction: column; gap: 10px; }
 
 .habit-row{
@@ -414,7 +430,7 @@ button{
   justify-content: space-between;
   gap: 10px;
   padding: 12px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 18px;
   background: color-mix(in srgb, var(--surface2) 92%, transparent);
 }
@@ -432,22 +448,21 @@ button{
   width: 22px; height: 22px;
   display:flex; align-items:center; justify-content:center;
 }
-.habit-icon img{ width: 22px; height: 22px; border-radius: 9px; object-fit: cover; }
+.habit-icon img{ width: 22px; height: 22px; border-radius: 10px; object-fit: cover; }
 .habit-icon .icon-emoji{ font-size: 20px; }
 
-/* ---------- Progress rows ---------- */
 .progress-list{ display:flex; flex-direction: column; gap: 10px; }
+
 .progress-row{
   display:flex;
   align-items:center;
   justify-content: space-between;
   gap: 10px;
   padding: 12px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 18px;
   background: color-mix(in srgb, var(--surface2) 92%, transparent);
 }
-
 .progress-left{ display:flex; align-items:center; gap: 10px; min-width:0; }
 .progress-title{
   font-weight: 900;
@@ -464,7 +479,7 @@ button{
 .photo-preview{
   margin-top: 10px;
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 18px;
   background: color-mix(in srgb, var(--surface2) 92%, transparent);
   display:flex;
@@ -472,14 +487,13 @@ button{
   justify-content: space-between;
   gap: 12px;
 }
-
 .photo-preview img{
   width: 58px;
   height: 58px;
   border-radius: 18px;
   object-fit: cover;
   display:block;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.16);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.18);
 }
 
 /* ---------- Settings ---------- */
@@ -499,7 +513,7 @@ button{
 .colorpick{
   width: 56px;
   height: 40px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 14px;
   background: var(--surface);
   padding: 0;
@@ -513,18 +527,18 @@ button{
 
 .divider{
   height: 1px;
-  background: color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--border) 80%, transparent);
   margin: 14px 0;
 }
 
-/* ---------- Crop modal stage (kept) ---------- */
+/* ---------- Cropper stage ---------- */
 .crop-panel{ width: min(720px, calc(100% - 18px)); }
 .crop-body{ max-height: 75vh; }
 .crop-stage{
   width: 100%;
   height: min(52vh, 420px);
-  background: rgba(0,0,0,0.04);
-  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.03);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 18px;
   overflow: hidden;
   display:flex;
@@ -540,7 +554,6 @@ button{
   justify-content: space-between;
   gap: 10px;
 }
-
 .zoomrow{
   flex: 1;
   display:flex;
