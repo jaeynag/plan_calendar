@@ -1,10 +1,10 @@
-/* Plan Calendar style v25 (Glass Text + Compact Flex Layout)
-   - Month Title: Pure Glass Text (No badge background)
-   - Day Cell: Starts extremely compact (approx 1 icon height)
+/* Plan Calendar style v26 (Final Polish)
+   - Day Cell: Extremely compact vertical fit. Grows only as needed.
    - Icon Layout: 
-     1 -> 2 (Stack Vertically)
-     3 -> 4 (Wrap to Next Column)
-     Implemented via Flexbox Column Wrap + Fixed Max-Height constraint
+     1 icon  -> Height ~24px
+     2 icons -> Height ~46px (Stacked vertically)
+     3 icons -> Wraps to right column (1 3 / 2 4 layout)
+   - Visuals: Glass Text + Glass Plates
 */
 
 :root{
@@ -27,13 +27,16 @@
   --header-h: 66px;
   --weekday-h: 34px;
 
-  /* Icon Size Tunables */
-  --icon-size: 18px;
+  /* Icon Size Tuned for "Fit the box" */
+  --icon-size: 20px;
   --icon-gap: 2px;
-  /* Max-height for icons container to force wrapping after 2 items:
-     (IconSize * 2) + Gap = 18*2 + 2 = 38px
+  
+  /* Max Height Calculation for wrapping:
+     (IconSize * 2) + Gap + buffer
+     20 * 2 + 2 = 42px.
+     This forces the 3rd item to wrap to the next column.
   */
-  --icon-area-h: 38px; 
+  --icon-area-limit: 43px; 
 }
 
 *{ box-sizing: border-box; }
@@ -199,7 +202,6 @@ button{
 
 /* ========================================================= */
 /* GLASS TEXT EFFECT (Month Title) */
-/* "글씨 그 자체가 유리질감이 나게" */
 /* ========================================================= */
 .month-title{
   font-size: clamp(32px, 8.6vw, 44px);
@@ -210,24 +212,16 @@ button{
   min-width: 150px;
   text-align:center;
 
-  /* Transparent text fill */
   color: rgba(255, 255, 255, 0.1); 
-  
-  /* Specular Highlight & Depth Shadow */
-  /* Top-left light, Bottom-right shadow */
   text-shadow: 
     1px 1px 0 rgba(255, 255, 255, 0.25), 
     -1px -1px 0 rgba(0, 0, 0, 0.1),
     0 20px 30px rgba(0,0,0,0.1);
-    
-  /* Blend mode to interact with background */
   mix-blend-mode: hard-light;
 }
 
-/* If user theme is very light, we need inverted shadows to see the glass */
 @media (prefers-color-scheme: light) {
   .month-title {
-     /* Darker glass for light mode */
      color: rgba(0, 0, 0, 0.05);
      text-shadow: 
        -1px -1px 0 rgba(0,0,0,0.1),
@@ -291,7 +285,7 @@ button{
   gap: 6px; 
   padding: 8px;
   
-  /* Start rows extremely compact. Grow if needed. */
+  /* Minimal Start Height (Let content push it) */
   grid-auto-rows: minmax(min-content, auto); 
 
   background: color-mix(in srgb, var(--surface) 10%, transparent);
@@ -313,16 +307,16 @@ button{
   border-radius: 14px;
   box-shadow: 0 4px 8px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.15);
 
-  /* PADDING REDUCED: Compact fit */
-  padding: 4px;
+  /* PADDING: Extremely minimal to reduce height */
+  padding: 4px; 
   
   display:flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 2px; /* Gap between Date number and Icons */
+  gap: 1px; /* Gap between Date number and Icons */
 
   min-width: 0;
-  min-height: 0; /* Let it shrink to content */
+  min-height: 0; 
   overflow: hidden;
   touch-action: manipulation;
   transition: box-shadow 140ms ease, transform 120ms ease, background 140ms ease;
@@ -345,9 +339,8 @@ button{
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
-  
-  /* Minimal padding to sit tight at top right */
-  padding: 2px 2px 0 0;
+  /* Top-Right tight fit */
+  padding: 0 1px 0 0;
   
   color: color-mix(in srgb, var(--text) 76%, transparent);
   opacity: 0.7;
@@ -374,38 +367,31 @@ button{
 }
 
 /* ========================================================= */
-/* ICON LAYOUT LOGIC (Flex Column Wrap) */
-/* Requirements:
-   - 1 icon: Fits compact
-   - 2 icons: Stacks vertically (1 / 2)
-   - 3 icons: Wraps to right (1 3 / 2 4)
+/* ICON LAYOUT LOGIC (Flex Column Wrap + Max Height) */
+/* - Uses Flexbox column wrap.
+   - Max-height constrains it to exactly 2 items high.
+   - If 3rd item comes, it wraps to the next column (Right side).
 */
 /* ========================================================= */
 .day-dots{
   display: flex;
   flex-direction: column;
-  flex-wrap: wrap; /* Wrap to next column if height exceeded */
+  flex-wrap: wrap; 
   
-  /* CRITICAL: Constrain height to exactly 2 rows + gap */
-  max-height: var(--icon-area-h); 
+  /* Forces wrapping after 2nd item */
+  max-height: var(--icon-area-limit); 
   
   gap: var(--icon-gap);
-  align-content: center; /* Center columns if multiple */
+  align-content: center; /* Center columns */
   justify-content: flex-start;
 
-  margin-top: 0;
+  margin-top: 1px;
   width: 100%;
   
-  /* Allow overflow if more than 4, but 4 is the visual sweet spot */
   overflow: hidden; 
 }
 
-/* Remove grid classes from JS logic, use universal flex item styling */
-.day-dots.single, .day-dots.double {
-  /* No specific override needed for layout, flex handles it */
-}
-
-/* Icon Sizing */
+/* Icon Sizing: Slightly bigger to fill the box visually */
 .icon-emoji{
   font-size: var(--icon-size);
   line-height: 1;
@@ -423,17 +409,6 @@ button{
   display:block;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
-
-/* Special Case: If there is ONLY 1 icon (class .single added by JS), make it bigger? 
-   User asked for "compact", so maybe keep it small or slightly bigger.
-   Let's keep it small to satisfy "More, more, more compact". 
-   If you want the single icon BIG, uncomment below.
-*/
-/*
-.day-dots.single .icon-emoji { font-size: 24px; width: 24px; height: 24px; }
-.day-dots.single .icon-img { width: 24px; height: 24px; }
-*/
-
 
 /* ---------- Modals ---------- */
 .modal.hidden{ display:none; }
