@@ -586,3 +586,210 @@ button{
 }
 .zoomlabel{ font-size: 12px; color: color-mix(in srgb, var(--text) 55%, transparent); font-weight: 800; }
 #zoomRange{ width: 100%; }
+
+/* --- v15 icon density tuning --- */
+:root{
+  --icon-area: 44px; /* tighter by default */
+}
+
+/* 2 items: stack vertically and feel bigger */
+.day-dots.double{
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-content: center;
+  min-height: 58px;
+  max-height: 58px;
+}
+
+/* 1 item: keep big, but also use the taller icon area */
+.day-dots.single{
+  min-height: 58px;
+  max-height: 58px;
+}
+
+.day-dots.double .icon-emoji{
+  font-size: 26px;
+}
+
+.day-dots.double .icon-img{
+  width: 28px;
+  height: 28px;
+  border-radius: 12px;
+}
+
+/* 3+ items: slightly smaller so it doesn't look cramped */
+.day-dots:not(.single):not(.double) .icon-emoji{
+  font-size: 17px;
+}
+.day-dots:not(.single):not(.double) .icon-img{
+  width: 19px;
+  height: 19px;
+  border-radius: 9px;
+}
+
+
+
+/* ===== v16: Glass effect for month title only ===== */
+:root{
+  --glass-bg: color-mix(in srgb, var(--surface) 18%, transparent);
+  --glass-border: color-mix(in srgb, var(--surface) 30%, transparent);
+  --glass-shadow: 0 14px 40px rgba(0,0,0,0.22);
+  --glass-highlight: color-mix(in srgb, #ffffff 22%, transparent);
+}
+
+/* Month title as a frosted glass "badge" */
+.month-title{
+  position: relative;
+  padding: 10px 18px;
+  border-radius: 22px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  isolation: isolate; /* keep blend effects local */
+}
+
+.month-title::before{
+  content: "";
+  position: absolute;
+  inset: -6px -10px;           /* a bit larger than text for the badge */
+  border-radius: 26px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  pointer-events: none;
+}
+
+/* true glass on browsers that support it */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .month-title::before{
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+  }
+}
+
+/* subtle specular highlight */
+.month-title::after{
+  content: "";
+  position: absolute;
+  inset: -6px -10px;
+  border-radius: 26px;
+  background:
+    radial-gradient(260px 120px at 30% 10%, var(--glass-highlight), transparent 60%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Make the text feel more "iOS" */
+.month-title{
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.08);
+}
+
+/* Keep chevrons and settings visually lighter vs the month badge */
+.navchev, .settingsbtn{
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.02);
+}
+
+
+
+/* ===== v17: Glass slab for the whole calendar grid ===== */
+.grid{
+  position: relative;
+  background: transparent !important;   /* remove separator background */
+  padding: 6px;                        /* glass frame padding */
+  border-radius: 18px;
+  overflow: hidden;
+  gap: 1px;                            /* hairlines between cells */
+}
+
+/* hairline color sits behind the gaps */
+.grid{
+  background-color: color-mix(in srgb, var(--surface) 10%, transparent);
+}
+
+/* Glass slab layer */
+.grid::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface) 20%, transparent);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.22);
+  pointer-events:none;
+  z-index: 0;
+}
+
+/* True glass when supported (iOS/Safari) */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .grid::before{
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+  }
+}
+
+/* Specular highlight */
+.grid::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius: 18px;
+  background:
+    radial-gradient(420px 180px at 28% 8%,
+      color-mix(in srgb, #ffffff 18%, transparent),
+      transparent 62%);
+  opacity: 0.55;
+  pointer-events:none;
+  z-index: 0;
+}
+
+/* Put day cells above the slab */
+.grid > *{ position: relative; z-index: 1; }
+
+/* Cells: slightly translucent so the slab reads as one piece */
+.day{
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--surface) 18%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 18%, transparent) 30%,
+      color-mix(in srgb, var(--surface) 10%, transparent) 30%,
+      color-mix(in srgb, var(--surface) 10%, transparent) 100%
+    ) !important;
+}
+
+/* Empty cells: even lighter */
+.day.empty{
+  background: color-mix(in srgb, var(--surface) 7%, transparent) !important;
+}
+
+/* ===== v18: Glossy ring for selected / today ===== */
+:root{
+  --ring: color-mix(in srgb, var(--text) 42%, transparent);
+  --ring-soft: color-mix(in srgb, var(--text) 22%, transparent);
+  --ring-glow: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.day.selected{
+  z-index: 3; /* sit above neighbors */
+  box-shadow:
+    inset 0 0 0 2px var(--ring),
+    0 10px 22px rgba(0,0,0,0.20),
+    0 0 0 6px var(--ring-soft),
+    0 0 24px 6px var(--ring-glow);
+  transform: translateZ(0);
+}
+
+.day.today{
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--text) 30%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--text) 14%, transparent);
+}
+
+.day.selected:active{
+  box-shadow:
+    inset 0 0 0 2px var(--ring),
+    0 8px 18px rgba(0,0,0,0.18),
+    0 0 0 5px var(--ring-soft),
+    0 0 20px 5px var(--ring-glow);
+}
