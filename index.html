@@ -74,6 +74,41 @@
     </section>
   </div>
 
+
+  <!-- 회원가입 모달 -->
+  <div id="signupModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">회원가입</div>
+        <button class="xbtn" data-close="1" type="button">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span>이메일</span>
+          <input id="signupEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+        </label>
+
+        <label class="field">
+          <span>비밀번호</span>
+          <input id="signupPassword" type="password" placeholder="6자 이상" autocomplete="new-password" />
+        </label>
+
+        <label class="field">
+          <span>비밀번호 확인</span>
+          <input id="signupPassword2" type="password" placeholder="비밀번호 다시" autocomplete="new-password" />
+        </label>
+
+        <div id="signupMsg" class="hint"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="nav-btn" data-close="1" type="button">취소</button>
+        <button id="btnDoSignUp" class="primary" type="button">가입</button>
+      </div>
+    </div>
+  </div>
+
+
   <!-- 체크 모달 -->
   <div id="checkModal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop" data-close="1"></div>
