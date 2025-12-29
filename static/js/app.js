@@ -4,7 +4,7 @@
 */
 (() => {
   "use strict";
-  console.log("[PlanCal] app.js v39 loaded");
+  console.log("[PlanCal] app.js v40 loaded");
 
 /* global supabase */
 (() => {
@@ -80,7 +80,13 @@
   }
 
   function openModal(idSel) { const el = q(idSel); if (el) el.classList.remove("hidden"); }
-  function closeAllModals() { $$(".modal").forEach((m) => m.classList.add("hidden")); }
+  
+function isModalOpen(id) {
+  const el = q(id);
+  return !!el && !el.classList.contains("hidden");
+}
+
+function closeAllModals() { $$(".modal").forEach((m) => m.classList.add("hidden")); }
   // -----------------------------
   // Auth
   // -----------------------------
@@ -229,6 +235,164 @@
     renderDots();
   }
 
+  // -----------------------------
+// Theme (Settings modal)
+const THEME_KEY = "plancal_theme_v1";
+const THEME_DEFAULT = { bg: "#f6f7fb", text: "#111111" };
+
+function safeJsonParse(s) {
+  try { return JSON.parse(s); } catch { return null; }
+}
+
+function applyTheme(theme, alsoSyncInputs = true) {
+  const t = {
+    bg: (theme && theme.bg) ? String(theme.bg) : THEME_DEFAULT.bg,
+    text: (theme && theme.text) ? String(theme.text) : THEME_DEFAULT.text,
+  };
+
+  const root = document.documentElement;
+  root.style.setProperty("--bg", t.bg);
+  root.style.setProperty("--text", t.text);
+
+  if (alsoSyncInputs) {
+    const bgEl = q("#themeBg");
+    const txEl = q("#themeText");
+    if (bgEl) bgEl.value = t.bg;
+    if (txEl) txEl.value = t.text;
+  }
+}
+
+function loadTheme() {
+  const raw = localStorage.getItem(THEME_KEY);
+  const obj = raw ? safeJsonParse(raw) : null;
+  applyTheme(obj || THEME_DEFAULT, true);
+}
+
+function saveThemeFromInputs() {
+  const bg = q("#themeBg")?.value || THEME_DEFAULT.bg;
+  const text = q("#themeText")?.value || THEME_DEFAULT.text;
+  const obj = { bg, text };
+  localStorage.setItem(THEME_KEY, JSON.stringify(obj));
+  applyTheme(obj, false);
+}
+
+function resetTheme() {
+  localStorage.removeItem(THEME_KEY);
+  applyTheme(THEME_DEFAULT, true);
+}
+
+function bindThemeControls() {
+  on("#themeBg", "input", () => saveThemeFromInputs());
+  on("#themeText", "input", () => saveThemeFromInputs());
+  on("#btnThemeReset", "click", () => resetTheme());
+}
+
+// -----------------------------
+// Progress (Current month)
+function renderProgress() {
+  const list = q("#progressList");
+  const msg = q("#progressMsg");
+  if (!list || !msg) return;
+
+  list.innerHTML = "";
+  msg.textContent = "";
+
+  if (!state.session) {
+    msg.textContent = "로그인부터 하고 와라.";
+    return;
+  }
+
+  const y = state.year;
+  const m = state.month;
+  const daysInMonth = new Date(y, m, 0).getDate();
+
+  const byHabit = new Map();
+  for (const h of state.habits) byHabit.set(h.id, new Set());
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = isoDate(y, m, d);
+    const ids = state.logsByDate[iso] || [];
+    for (const id of ids) {
+      const s = byHabit.get(id);
+      if (s) s.add(iso); // distinct days
+    }
+  }
+
+  const habits = [...state.habits].sort((a, b) => {
+    const ca = byHabit.get(a.id)?.size || 0;
+    const cb = byHabit.get(b.id)?.size || 0;
+    return cb - ca;
+  });
+
+  if (!habits.length) {
+    msg.textContent = "목표가 없다. 추가부터 해라.";
+    return;
+  }
+
+  for (const h of habits) {
+    const done = byHabit.get(h.id)?.size || 0;
+    const pct = daysInMonth ? Math.round((done / daysInMonth) * 100) : 0;
+
+    const row = document.createElement("div");
+    row.className = "progress-row";
+
+    const left = document.createElement("div");
+    left.className = "progress-left";
+
+    // icon
+    const iconWrap = document.createElement("div");
+    iconWrap.className = "progress-icon";
+
+    if (h.icon_url) {
+      const img = document.createElement("img");
+      img.className = "icon-img";
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      img.src = h.icon_url;
+      iconWrap.appendChild(img);
+    } else {
+      const span = document.createElement("span");
+      span.className = "icon-emoji";
+      span.textContent = h.emoji || "✅";
+      iconWrap.appendChild(span);
+    }
+
+    const title = document.createElement("div");
+    title.className = "progress-title";
+    title.textContent = h.title || "(제목없음)";
+
+    left.appendChild(iconWrap);
+    left.appendChild(title);
+
+    const right = document.createElement("div");
+    right.className = "progress-right";
+
+    const txt = document.createElement("div");
+    txt.className = "progress-count";
+    txt.textContent = `${done}/${daysInMonth}일 (${pct}%)`;
+
+    const bar = document.createElement("div");
+    bar.className = "progress-bar";
+
+    const fill = document.createElement("div");
+    fill.className = "progress-fill";
+    fill.style.width = `${pct}%`;
+
+    bar.appendChild(fill);
+    right.appendChild(txt);
+    right.appendChild(bar);
+
+    row.appendChild(left);
+    row.appendChild(right);
+
+    list.appendChild(row);
+  }
+
+  msg.textContent = `${y}년 ${m}월 기준.`;
+}
+
   function applyIconSizingVars() {
     const grid = pick("#calendarGrid","#calGrid");
     const first = grid ? grid.querySelector(".day") : null;
@@ -241,7 +405,7 @@
 
     // Icon sizes: 1 icon fills, 2 icons stack, 3+ uses 2-col grid smaller
     const icon1 = Math.max(34, Math.min(72, w - 18));
-    const icon2 = Math.max(30, Math.min(64, w - 20));
+    const icon2 = icon1; // 2개도 사이즈 변경 없이 1개와 동일
     const iconS = Math.max(22, Math.min(46, Math.floor((w - 22) / 2)));
 
     const root = document.documentElement;
@@ -477,6 +641,7 @@
     if (state.month === 1) { state.month = 12; state.year -= 1; }
     else state.month -= 1;
     renderCalendarGrid();
+    if (isModalOpen("#progressModal")) renderProgress();
     if (state.session) await reloadAll();
   }
 
@@ -484,6 +649,7 @@
     if (state.month === 12) { state.month = 1; state.year += 1; }
     else state.month += 1;
     renderCalendarGrid();
+    if (isModalOpen("#progressModal")) renderProgress();
     if (state.session) await reloadAll();
   }
 
@@ -494,7 +660,8 @@
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
 
     on("#btnSettings", "click", () => openModal("#settingsModal"));
-    on("#btnOpenProgress", "click", () => { closeAllModals(); openModal("#progressModal"); });
+    bindThemeControls();
+    on("#btnOpenProgress", "click", () => { closeAllModals(); renderProgress(); openModal("#progressModal"); });
 
     onAny(["#btnSaveDay","#btnSave"], "click", () => {
       saveLogsForActiveDate().catch((e) => {
@@ -532,9 +699,11 @@
   // -----------------------------
   async function main() {
     initYearMonth();
+    loadTheme();
     bindLogin();
     bindUI();
     renderCalendarGrid();
+    if (isModalOpen("#progressModal")) renderProgress();
 
     const ok = await ensureAuthedOrShowLogin();
     if (!ok) return;
