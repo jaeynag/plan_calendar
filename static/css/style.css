@@ -963,3 +963,58 @@ button{
 .month-title:not([data-text])::after{
   content: none !important;
 }
+
+
+/* ===== v21: Month label glass TEXT (softer, iOS lock-screen vibe) =====
+   이전 v20이 너무 '금속/플라스틱'처럼 보였음 -> 하이라이트/블러/그림자 강도 낮추고
+   글자 자체를 "반투명 유리" 느낌으로 재조합.
+*/
+
+.month-title{
+  /* base glyph layer */
+  color: transparent !important;
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.92) 0%,
+    rgba(255,255,255,0.42) 46%,
+    rgba(255,255,255,0.78) 100%
+  ) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+
+  /* subtle edge definition like glass */
+  -webkit-text-stroke: 0.6px rgba(255,255,255,0.16) !important;
+
+  /* calm depth (NOT big glow) */
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,0.20)) !important;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,0.10),
+    0 6px 14px rgba(0,0,0,0.24) !important;
+}
+
+/* top specular highlight inside letters */
+.month-title::before{
+  content: attr(data-text) !important;
+  color: transparent !important;
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,255,255,0.30) 34%,
+    rgba(255,255,255,0.00) 62%
+  ) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  opacity: 0.42 !important;
+
+  /* remove aggressive blending that can look weird */
+  mix-blend-mode: normal !important;
+}
+
+/* mild refraction blur layer (very light) */
+.month-title::after{
+  content: attr(data-text) !important;
+  color: rgba(255,255,255,0.65) !important;
+  filter: blur(6px) !important;
+  opacity: 0.14 !important;
+  mix-blend-mode: normal !important;
+}
