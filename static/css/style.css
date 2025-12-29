@@ -1,7 +1,7 @@
-/* Plan Calendar style v14 (premium + tighter cells)
-   - iOS system font stack (SF Pro)
-   - day cell padding/blank space reduced
-   - icon grid kept 2 columns, 2 rows
+/* Plan Calendar style v23 (Glass Plates)
+   - "Glass on Glass": Semi-transparent floating cards
+   - Removed split-color date headers to prevent content overlap
+   - iOS system font stack
 */
 
 :root{
@@ -10,8 +10,6 @@
 
   --surface: #ffffff;
   --surface2: #f3f4f6;
-  --cell-top: #ffffff;
-  --cell-bottom: #f7f8fb;
 
   --border: rgba(17,17,17,0.08);
   --muted: rgba(17,17,17,0.55);
@@ -23,17 +21,10 @@
   --radius-card: 22px;
   --radius-shell: 26px;
 
-  --grid-sep: rgba(17,17,17,0.055);
-  --grid-gap: 1px;
-
   --header-h: 66px;
   --weekday-h: 34px;
 
-  /* tighter layout */
-  --day-pad: 6px;
-  --daynum-size: 12px;
-
-  /* icons area: smaller but still 2 rows */
+  /* Glass Layout Tunables */
   --icon-area: 46px;
 }
 
@@ -256,89 +247,113 @@ button{
 .weekdays .sun{ color: color-mix(in srgb, var(--sun) 88%, transparent); }
 .weekdays .sat{ color: color-mix(in srgb, var(--sat) 88%, transparent); }
 
-/* ---------- Grid ---------- */
+/* ---------- Grid (Glass Tray) ---------- */
 .grid{
   flex: 1;
   display:grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: var(--grid-gap);
-  background: var(--grid-sep);
-  border-radius: 18px;
+  /* Glass Plate Layout */
+  gap: 6px; 
+  padding: 8px;
+  grid-auto-rows: minmax(70px, auto); /* Rows grow if content overflows */
+
+  /* Glass Tray Effect */
+  background: color-mix(in srgb, var(--surface) 10%, transparent);
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--text) 5%, transparent);
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.02);
+  
   overflow: hidden;
   min-width: 0;
+
+  /* Blur behind the tray */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-/* ---------- Day cell (square corners) ---------- */
+/* ---------- Day cell (Glass Plates) ---------- */
 .day{
-  border-radius: 0;
+  /* Individual Glass Card */
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--surface) 40%, transparent);
+  box-shadow: 
+    0 4px 6px rgba(0,0,0,0.02),
+    inset 0 1px 0 rgba(255,255,255,0.1);
 
-  /* shorter top area => less empty space above number */
-  background:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--cell-top) 96%, transparent) 0%,
-      color-mix(in srgb, var(--cell-top) 96%, transparent) 28%,
-      color-mix(in srgb, var(--cell-bottom) 96%, transparent) 28%,
-      color-mix(in srgb, var(--cell-bottom) 96%, transparent) 100%
-    );
-
-  padding: var(--day-pad);
+  padding: 6px;
   display:flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start; /* Content starts from top */
+  gap: 4px;
+
   min-width: 0;
   min-height: 0;
   overflow: hidden;
   touch-action: manipulation;
   transition: box-shadow 140ms ease, transform 120ms ease, background 140ms ease;
 }
-.day:active{ transform: scale(0.995); }
+
+.day:active{ transform: scale(0.98); }
 
 .day.empty{
-  background: color-mix(in srgb, var(--surface) 70%, var(--bg));
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
 }
 
+/* Day Number: Subtle, Top Right */
 .day-num{
   display:flex;
   justify-content:flex-end;
   align-items:center;
-  font-size: var(--daynum-size);
+  font-size: 12px;
   font-weight: 800;
   line-height: 1;
-  padding-top: 1px;
+  padding: 2px 2px 0 0;
   color: color-mix(in srgb, var(--text) 76%, transparent);
+  opacity: 0.7;
 }
-.day.sun .day-num{ color: var(--sun); }
-.day.sat .day-num{ color: var(--sat); }
-.day.holiday .day-num{ color: var(--holiday); }
+
+.day.sun .day-num{ color: var(--sun); opacity: 1; }
+.day.sat .day-num{ color: var(--sat); opacity: 1; }
+.day.holiday .day-num{ color: var(--holiday); opacity: 1; }
 
 .day.today{
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text) 20%, transparent);
-}
-.day.selected{
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text) 14%, transparent);
+  /* Glowing glass edge */
+  box-shadow: 
+    inset 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent),
+    0 4px 12px rgba(0,0,0,0.08);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
 }
 
-/* ---------- Icons (2 columns, wrap down) ---------- */
+.day.selected{
+  z-index: 2;
+  box-shadow: 
+    inset 0 0 0 2px color-mix(in srgb, var(--text) 50%, transparent),
+    0 8px 20px rgba(0,0,0,0.15);
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  transform: translateY(-1px);
+}
+
+/* ---------- Icons (Variable Grid) ---------- */
 .day-dots{
   display:grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: 1fr;
-  gap: 6px;
-  align-items:center;
-  justify-items:center;
-  align-content:start;
+  grid-auto-rows: 24px; /* Fixed height per row */
+  gap: 4px;
+  align-content: start;
+  justify-items: center;
 
-  min-height: var(--icon-area);
-  max-height: var(--icon-area);
-  overflow:hidden;
-  min-width: 0;
+  margin-top: 2px;
+  min-height: 0;
+  overflow: visible; /* Allow overflow */
 }
 
 .day-dots.single{
   grid-template-columns: 1fr;
-  min-height: var(--icon-area);
-  max-height: var(--icon-area);
+  grid-auto-rows: 40px;
 }
 
 .icon-emoji{
@@ -346,20 +361,20 @@ button{
   line-height: 1;
   filter: saturate(1.05);
 }
-.day-dots.single .icon-emoji{ font-size: 32px; }
+.day-dots.single .icon-emoji{ font-size: 30px; }
 
 .icon-img{
-  width: 20px;
-  height: 20px;
-  border-radius: 9px;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
   object-fit: cover;
   display:block;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 .day-dots.single .icon-img{
-  width: 38px;
-  height: 38px;
-  border-radius: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
 }
 
 /* ---------- Modals ---------- */
@@ -586,400 +601,3 @@ button{
 }
 .zoomlabel{ font-size: 12px; color: color-mix(in srgb, var(--text) 55%, transparent); font-weight: 800; }
 #zoomRange{ width: 100%; }
-
-/* --- v15 icon density tuning --- */
-:root{
-  --icon-area: 44px; /* tighter by default */
-}
-
-/* 2 items: stack vertically and feel bigger */
-.day-dots.double{
-  grid-template-columns: 1fr;
-  gap: 8px;
-  align-content: center;
-  min-height: 58px;
-  max-height: 58px;
-}
-
-/* 1 item: keep big, but also use the taller icon area */
-.day-dots.single{
-  min-height: 58px;
-  max-height: 58px;
-}
-
-.day-dots.double .icon-emoji{
-  font-size: 26px;
-}
-
-.day-dots.double .icon-img{
-  width: 28px;
-  height: 28px;
-  border-radius: 12px;
-}
-
-/* 3+ items: slightly smaller so it doesn't look cramped */
-.day-dots:not(.single):not(.double) .icon-emoji{
-  font-size: 17px;
-}
-.day-dots:not(.single):not(.double) .icon-img{
-  width: 19px;
-  height: 19px;
-  border-radius: 9px;
-}
-
-
-
-/* ===== v16: Glass effect for month title only ===== */
-:root{
-  --glass-bg: color-mix(in srgb, var(--surface) 18%, transparent);
-  --glass-border: color-mix(in srgb, var(--surface) 30%, transparent);
-  --glass-shadow: 0 14px 40px rgba(0,0,0,0.22);
-  --glass-highlight: color-mix(in srgb, #ffffff 22%, transparent);
-}
-
-/* Month title as a frosted glass "badge" */
-.month-title{
-  position: relative;
-  padding: 10px 18px;
-  border-radius: 22px;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  isolation: isolate; /* keep blend effects local */
-}
-
-.month-title::before{
-  content: "";
-  position: absolute;
-  inset: -6px -10px;           /* a bit larger than text for the badge */
-  border-radius: 26px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  pointer-events: none;
-}
-
-/* true glass on browsers that support it */
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .month-title::before{
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
-  }
-}
-
-/* subtle specular highlight */
-.month-title::after{
-  content: "";
-  position: absolute;
-  inset: -6px -10px;
-  border-radius: 26px;
-  background:
-    radial-gradient(260px 120px at 30% 10%, var(--glass-highlight), transparent 60%);
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-/* Make the text feel more "iOS" */
-.month-title{
-  font-weight: 900;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.08);
-}
-
-/* Keep chevrons and settings visually lighter vs the month badge */
-.navchev, .settingsbtn{
-  background: rgba(0,0,0,0.03);
-  border-color: rgba(0,0,0,0.02);
-}
-
-
-
-/* ===== v17: Glass slab for the whole calendar grid ===== */
-.grid{
-  position: relative;
-  background: transparent !important;   /* remove separator background */
-  padding: 6px;                        /* glass frame padding */
-  border-radius: 18px;
-  overflow: hidden;
-  gap: 1px;                            /* hairlines between cells */
-}
-
-/* hairline color sits behind the gaps */
-.grid{
-  background-color: color-mix(in srgb, var(--surface) 10%, transparent);
-}
-
-/* Glass slab layer */
-.grid::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface) 20%, transparent);
-  box-shadow: 0 18px 60px rgba(0,0,0,0.22);
-  pointer-events:none;
-  z-index: 0;
-}
-
-/* True glass when supported (iOS/Safari) */
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .grid::before{
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
-  }
-}
-
-/* Specular highlight */
-.grid::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  border-radius: 18px;
-  background:
-    radial-gradient(420px 180px at 28% 8%,
-      color-mix(in srgb, #ffffff 18%, transparent),
-      transparent 62%);
-  opacity: 0.55;
-  pointer-events:none;
-  z-index: 0;
-}
-
-/* Put day cells above the slab */
-.grid > *{ position: relative; z-index: 1; }
-
-/* Cells: slightly translucent so the slab reads as one piece */
-.day{
-  background:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--surface) 18%, transparent) 0%,
-      color-mix(in srgb, var(--surface) 18%, transparent) 30%,
-      color-mix(in srgb, var(--surface) 10%, transparent) 30%,
-      color-mix(in srgb, var(--surface) 10%, transparent) 100%
-    ) !important;
-}
-
-/* Empty cells: even lighter */
-.day.empty{
-  background: color-mix(in srgb, var(--surface) 7%, transparent) !important;
-}
-
-/* ===== v18: Glossy ring for selected / today ===== */
-:root{
-  --ring: color-mix(in srgb, var(--text) 42%, transparent);
-  --ring-soft: color-mix(in srgb, var(--text) 22%, transparent);
-  --ring-glow: color-mix(in srgb, var(--text) 12%, transparent);
-}
-
-.day.selected{
-  z-index: 3; /* sit above neighbors */
-  box-shadow:
-    inset 0 0 0 2px var(--ring),
-    0 10px 22px rgba(0,0,0,0.20),
-    0 0 0 6px var(--ring-soft),
-    0 0 24px 6px var(--ring-glow);
-  transform: translateZ(0);
-}
-
-.day.today{
-  box-shadow:
-    inset 0 0 0 2px color-mix(in srgb, var(--text) 30%, transparent),
-    0 0 0 4px color-mix(in srgb, var(--text) 14%, transparent);
-}
-
-.day.selected:active{
-  box-shadow:
-    inset 0 0 0 2px var(--ring),
-    0 8px 18px rgba(0,0,0,0.18),
-    0 0 0 5px var(--ring-soft),
-    0 0 20px 5px var(--ring-glow);
-}
-
-
-/* ===== v19: Undo "too much glass" + restore iOS-like clarity =====
-   Goal: premium, but readable. No giant white sheet, no washed-out grid.
-*/
-
-/* 1) Remove grid glass slab pseudo-elements (they were making everything look blank) */
-.grid::before,
-.grid::after{
-  content: none !important;
-  display: none !important;
-}
-
-/* 2) Restore a clean calendar card + subtle separators */
-.grid{
-  padding: 0 !important;
-  border-radius: 18px !important;
-  overflow: hidden !important;
-
-  /* subtle hairline separators like iOS */
-  gap: 1px !important;
-  background: color-mix(in srgb, var(--text) 7%, transparent) !important;
-}
-
-/* 3) Make day cells solid enough (no full transparency) */
-.day{
-  background:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--surface) 98%, transparent) 0%,
-      color-mix(in srgb, var(--surface) 98%, transparent) 32%,
-      color-mix(in srgb, var(--surface2) 86%, transparent) 32%,
-      color-mix(in srgb, var(--surface2) 86%, transparent) 100%
-    ) !important;
-}
-
-/* empty cells: quieter */
-.day.empty{
-  background: color-mix(in srgb, var(--surface2) 70%, transparent) !important;
-}
-
-/* 4) Month glass badge: smaller + not blocking weekdays */
-.month-title{
-  padding: 6px 12px !important;
-  min-width: 0 !important;
-}
-
-.month-title::before{
-  inset: -2px -6px !important;
-  border-radius: 18px !important;
-  background: color-mix(in srgb, var(--surface) 18%, transparent) !important;
-  border: 1px solid color-mix(in srgb, var(--surface) 26%, transparent) !important;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.14) !important;
-}
-
-@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .month-title::before{
-    -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
-    backdrop-filter: blur(14px) saturate(150%) !important;
-  }
-}
-
-.month-title::after{
-  inset: -2px -6px !important;
-  border-radius: 18px !important;
-  opacity: 0.38 !important;
-}
-
-/* 5) Selection: iOS-like subtle ring (no huge rectangle glow) */
-.day.selected{
-  box-shadow:
-    inset 0 0 0 2px color-mix(in srgb, var(--text) 28%, transparent),
-    0 6px 16px rgba(0,0,0,0.16) !important;
-}
-
-.day.today{
-  box-shadow:
-    inset 0 0 0 2px color-mix(in srgb, var(--text) 18%, transparent) !important;
-}
-
-/* 6) Slightly tighter cell padding so it feels less empty */
-:root{
-  --day-pad: 6px;
-  --icon-area: 46px;
-}
-
-/* 7) Ensure the calendar fills the card area nicely */
-.calendar-shell{
-  padding-bottom: 12px !important;
-}
-
-
-/* ===== v22: Compact day cells + content starts from TOP =====
-   - Reduce cell height/padding
-   - Remove "space-between" feel (icons were glued to bottom)
-   - Let rows grow ONLY when icons wrap (grid-auto-rows: minmax(..., auto))
-   - No glass experiments
-*/
-
-/* If any old month-title pseudo effects exist, hard-disable */
-.month-title{
-  color: var(--text) !important;
-  background: none !important;
-  -webkit-text-stroke: 0 !important;
-  filter: none !important;
-  text-shadow: none !important;
-}
-.month-title::before,
-.month-title::after{
-  content: none !important;
-  display: none !important;
-}
-
-/* Tunables */
-:root{
-  --day-pad: 5px;       /* 셀 안쪽 여백 */
-  --cell-min: 70px;     /* 기본 날짜칸 높이(작게 시작) */
-  --icon-row: 24px;     /* 아이콘 줄 높이 */
-  --icon-gap: 6px;      /* 아이콘 간격 */
-}
-
-/* Grid rows: start small, grow only if content wraps */
-.grid{
-  grid-auto-rows: minmax(var(--cell-min), auto) !important;
-}
-
-/* Day cell: content from top, even padding */
-.day{
-  padding: var(--day-pad) !important;
-  justify-content: flex-start !important;  /* 핵심 */
-  gap: 6px !important;
-}
-
-/* Date number: keep top-right, compact */
-.day-num{
-  font-size: 12px !important;
-  line-height: 1 !important;
-  padding-top: 1px !important;
-}
-
-/* Icons container: start right under date, grow downward */
-.day-dots{
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;  /* 좌우 2개 */
-  grid-auto-rows: var(--icon-row) !important;
-  gap: var(--icon-gap) !important;
-  align-content: start !important;
-  justify-items: center !important;
-
-  /* remove old fixed height constraints */
-  min-height: 0 !important;
-  max-height: none !important;
-  overflow: visible !important;
-}
-
-/* 1개면 크게 */
-.day-dots.single{
-  grid-template-columns: 1fr !important;
-  grid-auto-rows: 44px !important;
-  justify-items: center !important;
-}
-
-/* Emoji sizing */
-.icon-emoji{
-  font-size: 18px !important;
-  line-height: 1 !important;
-}
-.day-dots.single .icon-emoji{ font-size: 34px !important; }
-
-/* Photo sizing */
-.icon-img{
-  width: 22px !important;
-  height: 22px !important;
-  border-radius: 10px !important;
-}
-.day-dots.single .icon-img{
-  width: 40px !important;
-  height: 40px !important;
-  border-radius: 16px !important;
-}
-
-/* Make empty cells not reserve icon space */
-.day.empty .day-dots{
-  display: none !important;
-}
-
-/* Slightly tighter separators so it feels less "long" */
-.grid{
-  gap: 1px !important;
-}
