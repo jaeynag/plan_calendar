@@ -46,6 +46,15 @@
   function show(el) { el.classList.remove("hidden"); }
   function hide(el) { el.classList.add("hidden"); }
 
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
   // -----------------------------
   // Auth
   // -----------------------------
@@ -143,9 +152,7 @@
         return;
       }
 
-      // session이 없다면(설정 반영 전/Confirm email ON 등)
-      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. (Confirm email OFF 저장됐는지 확인) 일단 로그인 눌러.";
-      // 로그인 폼에 이메일 자동 채움
+      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. Confirm email OFF 저장됐는지 확인. 일단 로그인 눌러.";
       $("#email").value = email;
       $("#password").value = "";
     });
@@ -168,6 +175,22 @@
 
   function setTitle() {
     $("#ymTitle").textContent = `${state.year}년 ${state.month}월`;
+  }
+
+  function markTodayAndSelected() {
+    const now = new Date();
+    const ty = now.getFullYear();
+    const tm = now.getMonth() + 1;
+    const td = now.getDate();
+
+    $$("#calGrid .day").forEach((cell) => {
+      if (cell.classList.contains("empty")) return;
+      const dayNum = parseInt(cell.getAttribute("data-day"), 10);
+      cell.classList.toggle("today", ty === state.year && tm === state.month && dayNum === td);
+
+      const date = isoDate(state.year, state.month, dayNum);
+      cell.classList.toggle("selected", state.activeDate === date);
+    });
   }
 
   function renderCalendarGrid() {
@@ -202,26 +225,51 @@
       top.className = "day-num";
       top.textContent = String(dayNum);
 
-      const dots = document.createElement("div");
-      dots.className = "day-dots";
+      const emojis = document.createElement("div");
+      emojis.className = "day-dots"; // class명 유지
       const date = isoDate(y, m, dayNum);
-      dots.setAttribute("data-date", date);
+      emojis.setAttribute("data-date", date);
 
       cell.appendChild(top);
-      cell.appendChild(dots);
+      cell.appendChild(emojis);
 
       cell.addEventListener("click", () => onClickDay(dayNum));
       grid.appendChild(cell);
     }
 
-    renderDots();
+    renderEmojis();
+    markTodayAndSelected();
   }
 
-  function renderDots() {
+  function getEmojiByHabitId(habitId) {
+    const h = state.habits.find((x) => x.id === habitId);
+    return (h?.emoji || h?.icon || "✅").trim() || "✅";
+  }
+
+  // ✅ 점 대신 이모지 표시
+  function renderEmojis() {
     $$(".day-dots").forEach((el) => {
+      // count class 초기화
+      el.className = "day-dots";
+
       const date = el.getAttribute("data-date");
       const ids = state.logsByDate[date] || [];
-      el.textContent = ids.length ? "•".repeat(Math.min(ids.length, 6)) : "";
+
+      if (!ids.length) {
+        el.innerHTML = "";
+        return;
+      }
+
+      // 같은 습관이 중복 들어와도 1번만 표시
+      const uniq = Array.from(new Set(ids));
+      const emojis = uniq.map(getEmojiByHabitId);
+
+      const count = emojis.length;
+      const clamp = Math.min(Math.max(count, 1), 15);
+      el.classList.add(`emoji-count-${clamp}`);
+
+      // 전부 표시(많으면 wrap + 작은 폰트로)
+      el.innerHTML = emojis.map((e) => `<span class="e" aria-hidden="true">${escapeHtml(e)}</span>`).join("");
     });
   }
 
@@ -271,7 +319,8 @@
   async function reloadAll() {
     await loadHabits();
     await loadLogsForMonth();
-    renderDots();
+    renderEmojis();
+    markTodayAndSelected();
   }
 
   // -----------------------------
@@ -323,6 +372,7 @@
     state.activeDate = date;
     $("#modalDateTitle").textContent = date;
     renderHabitChecklist(date);
+    markTodayAndSelected();
     openModal("#checkModal");
   }
 
@@ -361,7 +411,8 @@
     }
 
     state.logsByDate[date] = [...incoming];
-    renderDots();
+    renderEmojis();
+    markTodayAndSelected();
     closeAllModals();
   }
 
