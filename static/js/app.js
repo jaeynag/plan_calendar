@@ -485,7 +485,7 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     const weeks = computeWeeksInMonth(y, m);
     const totalCells = weeks * 7;
 
-    grid.style.gridTemplateRows = `repeat(${weeks}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${weeks}, minmax(64px, auto))`;
 
     for (let i = 0; i < totalCells; i++) {
       const cell = document.createElement("div");
@@ -533,13 +533,20 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
       if (!ids.length) { el.innerHTML = ""; return; }
 
       const uniqIds = Array.from(new Set(ids));
-      const shown = uniqIds.slice(0, 6); // 2열 * 3줄
+      const shown = uniqIds.slice(0, 4); // 최대 4개(2x2)까지만 깔끔하게
+
+      // 3~4개일 때: 3번째/4번째가 오른쪽 컬럼에 오도록 순서 재배치
+      let shownOrdered = shown;
+      if (shown.length >= 3) {
+        const a = shown[0], b = shown[1], c = shown[2], d = shown[3];
+        shownOrdered = shown.length === 3 ? [a, c, b] : [a, c, b, d];
+      }
+
 
       if (shown.length === 1) el.classList.add("single");
       else if (shown.length === 2) el.classList.add("double");
-
-      const parts = [];
-      for (const hid of shown) {
+      else if (shown.length >= 3) el.classList.add("compact");const parts = [];
+      for (const hid of shownOrdered) {
         const h = getHabitById(hid);
         if (h?.icon_url) {
           parts.push(`<img class="icon-img" src="${escapeHtml(h.icon_url)}" alt="" />`);
