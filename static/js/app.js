@@ -9,6 +9,9 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+  // ✅ 사진 아이콘 저장용 버킷명 (Supabase Storage에서 생성 필요)
+  const ICON_BUCKET = "habit-icons";
+
   const THEME_DEFAULT_BG = "#f6f7fb";
   const THEME_DEFAULT_TEXT = "#111111";
   const THEME_KEY_BG = "theme_bg";
@@ -18,13 +21,15 @@
     session: null,
     year: null,
     month: null,
-    habits: [],
-    logsByDate: {},
+    habits: [],            // {id,title,emoji,icon_url,start_date}
+    logsByDate: {},        // { 'YYYY-MM-DD': [habit_id,...] }
     activeDate: null,
     holidaySet: new Set(),
     holidayYearLoaded: null,
     themeBg: THEME_DEFAULT_BG,
     themeText: THEME_DEFAULT_TEXT,
+    pendingPhotoFile: null,
+    pendingPhotoBlob: null,
   };
 
   // ---------- HTML escape ----------
@@ -39,7 +44,7 @@
 
   // ---------- date utils ----------
   const pad2 = (n) => String(n).padStart(2, "0");
-  const isoDate = (y,m,d) => `${y}-${pad2(m)}-${pad2(d)}`;
+  const isoDate = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
 
   function toDateOnlyStr(d) {
     const y = d.getFullYear();
@@ -48,8 +53,8 @@
     return isoDate(y, m, dd);
   }
   function parseYmd(ymd) {
-    const [y,m,d] = String(ymd).split("-").map((x) => parseInt(x, 10));
-    return new Date(y, (m||1) - 1, d||1);
+    const [y, m, d] = String(ymd).split("-").map((x) => parseInt(x, 10));
+    return new Date(y, (m || 1) - 1, d || 1);
   }
   function daysInclusive(startYmd, endYmd) {
     const a = parseYmd(startYmd);
@@ -60,36 +65,36 @@
   }
 
   // ---------- color utils ----------
-  function clamp01(x){ return Math.min(1, Math.max(0, x)); }
-  function hexToRgb(hex){
-    const h = String(hex || "").replace("#","").trim();
-    if (h.length === 3){
-      return { r: parseInt(h[0]+h[0],16), g: parseInt(h[1]+h[1],16), b: parseInt(h[2]+h[2],16) };
+  function clamp01(x) { return Math.min(1, Math.max(0, x)); }
+  function hexToRgb(hex) {
+    const h = String(hex || "").replace("#", "").trim();
+    if (h.length === 3) {
+      return { r: parseInt(h[0] + h[0], 16), g: parseInt(h[1] + h[1], 16), b: parseInt(h[2] + h[2], 16) };
     }
-    if (h.length === 6){
-      return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) };
+    if (h.length === 6) {
+      return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
     }
-    return {r:17,g:17,b:17};
+    return { r: 17, g: 17, b: 17 };
   }
-  function rgbToHex({r,g,b}){
-    const to = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2,"0");
+  function rgbToHex({ r, g, b }) {
+    const to = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
     return "#" + to(r) + to(g) + to(b);
   }
-  function mix(a,b,t){
+  function mix(a, b, t) {
     t = clamp01(t);
-    return { r: a.r + (b.r-a.r)*t, g: a.g + (b.g-a.g)*t, b: a.b + (b.b-a.b)*t };
+    return { r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, b: a.b + (b.b - a.b) * t };
   }
-  function rgba({r,g,b}, a){
+  function rgba({ r, g, b }, a) {
     a = clamp01(a);
     return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`;
   }
-  function luminance({r,g,b}){
+  function luminance({ r, g, b }) {
     const f = (c) => {
       c /= 255;
-      return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
     };
     const R = f(r), G = f(g), B = f(b);
-    return 0.2126*R + 0.7152*G + 0.0722*B;
+    return 0.2126 * R + 0.7152 * G + 0.0722 * B;
   }
 
   // -----------------------------
@@ -106,18 +111,15 @@
     const textRgb = hexToRgb(text);
     const isDarkBg = luminance(bgRgb) < 0.35;
 
-    const white = {r:255,g:255,b:255};
-
+    const white = { r: 255, g: 255, b: 255 };
     const surface = mix(bgRgb, white, isDarkBg ? 0.10 : 0.35);
     const surface2 = mix(bgRgb, white, isDarkBg ? 0.06 : 0.22);
-
     const cellTop = mix(surface, textRgb, isDarkBg ? 0.10 : 0.06);
     const cellBottom = mix(surface, bgRgb, isDarkBg ? 0.25 : 0.35);
 
     const border = rgba(textRgb, isDarkBg ? 0.18 : 0.10);
     const border2 = rgba(textRgb, isDarkBg ? 0.26 : 0.16);
     const muted = rgba(textRgb, isDarkBg ? 0.72 : 0.55);
-    const gear = rgba(textRgb, isDarkBg ? 0.86 : 0.72);
     const shadow = isDarkBg ? "0 10px 26px rgba(0,0,0,0.35)" : "0 8px 22px rgba(0,0,0,0.06)";
 
     const root = document.documentElement;
@@ -131,12 +133,11 @@
     root.style.setProperty("--border2", border2);
     root.style.setProperty("--muted", muted);
     root.style.setProperty("--shadow", shadow);
-    root.style.setProperty("--gear", gear);
 
     try {
       localStorage.setItem(THEME_KEY_BG, bg);
       localStorage.setItem(THEME_KEY_TEXT, text);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function loadTheme() {
@@ -147,7 +148,7 @@
       const t = localStorage.getItem(THEME_KEY_TEXT);
       if (b && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(b)) bg = b;
       if (t && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t)) text = t;
-    } catch (_) {}
+    } catch (_) { }
     applyTheme(bg, text);
   }
 
@@ -166,7 +167,7 @@
         state.holidayYearLoaded = year;
         return;
       }
-    } catch (_) {}
+    } catch (_) { }
 
     try {
       const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/KR`;
@@ -176,7 +177,7 @@
       const dates = (data || []).map((x) => x?.date).filter((x) => typeof x === "string");
       state.holidaySet = new Set(dates);
       state.holidayYearLoaded = year;
-      try { localStorage.setItem(cacheKey, JSON.stringify(dates)); } catch (_) {}
+      try { localStorage.setItem(cacheKey, JSON.stringify(dates)); } catch (_) { }
     } catch (_) {
       state.holidaySet = new Set();
       state.holidayYearLoaded = year;
@@ -213,8 +214,8 @@
   // -----------------------------
   // Modal helpers
   // -----------------------------
-  function openModal(sel){ const el = $(sel); if (el) el.classList.remove("hidden"); }
-  function closeAllModals(){ $$(".modal").forEach((m) => m.classList.add("hidden")); }
+  function openModal(sel) { const el = $(sel); if (el) el.classList.remove("hidden"); }
+  function closeAllModals() { $$(".modal").forEach((m) => m.classList.add("hidden")); }
 
   // -----------------------------
   // Auth UI
@@ -288,6 +289,7 @@
 
     $("#btnOpenHabit").addEventListener("click", () => {
       closeAllModals();
+      resetHabitPhotoUI();
       $("#habitMsg").textContent = "";
       openModal("#habitModal");
       setTimeout(() => $("#habitTitle")?.focus(), 0);
@@ -319,10 +321,9 @@
     }
 
     try {
-      // Load habits with start_date if exists
       const { data: habits, error: he } = await sb
         .from("habits")
-        .select("id,title,emoji,icon,start_date,created_at,is_active")
+        .select("id,title,emoji,icon,icon_url,start_date,created_at,is_active")
         .eq("is_active", true)
         .order("created_at", { ascending: true });
       if (he) throw he;
@@ -331,6 +332,7 @@
         id: h.id,
         title: h.title,
         emoji: (h.emoji || h.icon || "✅").trim() || "✅",
+        icon_url: h.icon_url || null,
         start_date: h.start_date || (h.created_at ? String(h.created_at).slice(0, 10) : null),
       }));
 
@@ -346,7 +348,6 @@
         .filter(Boolean)
         .sort()[0] || today;
 
-      // Fetch logs from earliest start to today (limit scope)
       const { data: logs, error: le } = await sb
         .from("habit_logs")
         .select("habit_id,check_date")
@@ -373,15 +374,25 @@
         const left = document.createElement("div");
         left.className = "progress-left";
 
-        const emo = document.createElement("div");
-        emo.className = "progress-emoji";
-        emo.textContent = h.emoji;
+        const iconWrap = document.createElement("div");
+        iconWrap.className = "habit-icon";
+        if (h.icon_url) {
+          const img = document.createElement("img");
+          img.src = h.icon_url;
+          img.alt = "";
+          iconWrap.appendChild(img);
+        } else {
+          const span = document.createElement("span");
+          span.className = "icon-emoji";
+          span.textContent = h.emoji;
+          iconWrap.appendChild(span);
+        }
 
         const title = document.createElement("div");
         title.className = "progress-title";
         title.textContent = h.title;
 
-        left.appendChild(emo);
+        left.appendChild(iconWrap);
         left.appendChild(title);
 
         const right = document.createElement("div");
@@ -471,7 +482,6 @@
     const weeks = computeWeeksInMonth(y, m);
     const totalCells = weeks * 7;
 
-    // ✅ 마지막 "빈 주" 없애기: grid rows를 필요한 주만큼만
     grid.style.gridTemplateRows = `repeat(${weeks}, 1fr)`;
 
     for (let i = 0; i < totalCells; i++) {
@@ -494,37 +504,49 @@
       top.className = "day-num";
       top.textContent = String(dayNum);
 
-      const emojis = document.createElement("div");
-      emojis.className = "day-dots";
-      emojis.setAttribute("data-date", isoDate(y, m, dayNum));
+      const icons = document.createElement("div");
+      icons.className = "day-dots";
+      icons.setAttribute("data-date", isoDate(y, m, dayNum));
 
       cell.appendChild(top);
-      cell.appendChild(emojis);
+      cell.appendChild(icons);
       cell.addEventListener("click", () => onClickDay(dayNum));
       grid.appendChild(cell);
     }
 
-    renderEmojis();
+    renderIcons();
     markTodaySelectedHoliday();
   }
 
-  function getEmojiByHabitId(habitId) {
-    const h = state.habits.find((x) => x.id === habitId);
-    return (h?.emoji || "✅").trim() || "✅";
+  function getHabitById(habitId) {
+    return state.habits.find((x) => x.id === habitId) || null;
   }
 
-  function renderEmojis() {
+  function renderIcons() {
     $$(".day-dots").forEach((el) => {
       el.className = "day-dots";
       const date = el.getAttribute("data-date");
       const ids = state.logsByDate[date] || [];
       if (!ids.length) { el.innerHTML = ""; return; }
 
-      const uniq = Array.from(new Set(ids));
-      const emojis = uniq.map(getEmojiByHabitId);
-      const clamp = Math.min(Math.max(emojis.length, 1), 15);
-      el.classList.add(`emoji-count-${clamp}`);
-      el.innerHTML = emojis.map((e) => `<span class="e" aria-hidden="true">${escapeHtml(e)}</span>`).join("");
+      const uniqIds = Array.from(new Set(ids));
+
+      // ✅ 2줄(3x2) 고정이라 최대 6개까지만 보여줌
+      const shown = uniqIds.slice(0, 6);
+
+      if (shown.length === 1) el.classList.add("single");
+
+      const parts = [];
+      for (const hid of shown) {
+        const h = getHabitById(hid);
+        if (h?.icon_url) {
+          parts.push(`<img class="icon-img" src="${escapeHtml(h.icon_url)}" alt="" />`);
+        } else {
+          const emo = (h?.emoji || "✅").trim() || "✅";
+          parts.push(`<span class="icon-emoji" aria-hidden="true">${escapeHtml(emo)}</span>`);
+        }
+      }
+      el.innerHTML = parts.join("");
     });
   }
 
@@ -534,7 +556,7 @@
   async function loadHabits() {
     const { data, error } = await sb
       .from("habits")
-      .select("id,title,emoji,icon,is_active,created_at")
+      .select("id,title,emoji,icon,icon_url,start_date,created_at,is_active")
       .eq("is_active", true)
       .order("created_at", { ascending: true });
     if (error) throw error;
@@ -543,6 +565,8 @@
       id: h.id,
       title: h.title,
       emoji: (h.emoji || h.icon || "✅").trim() || "✅",
+      icon_url: h.icon_url || null,
+      start_date: h.start_date || (h.created_at ? String(h.created_at).slice(0, 10) : null),
     }));
   }
 
@@ -569,7 +593,7 @@
     await ensureHolidays(state.year);
     await loadHabits();
     await loadLogsForMonth();
-    renderEmojis();
+    renderIcons();
     markTodaySelectedHoliday();
   }
 
@@ -589,15 +613,26 @@
       const left = document.createElement("div");
       left.className = "habit-left";
 
-      const emoji = document.createElement("span");
-      emoji.className = "habit-emoji";
-      emoji.textContent = h.emoji || "✅";
+      const iconWrap = document.createElement("span");
+      iconWrap.className = "habit-icon";
+
+      if (h.icon_url) {
+        const img = document.createElement("img");
+        img.src = h.icon_url;
+        img.alt = "";
+        iconWrap.appendChild(img);
+      } else {
+        const emo = document.createElement("span");
+        emo.className = "icon-emoji";
+        emo.textContent = h.emoji;
+        iconWrap.appendChild(emo);
+      }
 
       const title = document.createElement("span");
       title.className = "habit-title";
       title.textContent = h.title;
 
-      left.appendChild(emoji);
+      left.appendChild(iconWrap);
       left.appendChild(title);
 
       const cb = document.createElement("input");
@@ -657,11 +692,79 @@
     }
 
     state.logsByDate[date] = [...incoming];
-    renderEmojis();
+    renderIcons();
     markTodaySelectedHoliday();
     closeAllModals();
   }
 
+  // -----------------------------
+  // Photo crop/upload (MVP)
+  // -----------------------------
+  function resetHabitPhotoUI() {
+    state.pendingPhotoFile = null;
+    state.pendingPhotoBlob = null;
+    const input = $("#habitPhoto");
+    if (input) input.value = "";
+    $("#habitPhotoPreview").classList.add("hidden");
+    $("#habitPhotoImg").removeAttribute("src");
+  }
+
+  async function centerCropToBlob(file, outSize = 128) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(new Error("file read fail"));
+      fr.readAsDataURL(file);
+    });
+
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error("img load fail"));
+      im.src = dataUrl;
+    });
+
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const size = Math.min(w, h);
+    const sx = Math.floor((w - size) / 2);
+    const sy = Math.floor((h - size) / 2);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outSize;
+    canvas.height = outSize;
+    const ctx = canvas.getContext("2d", { alpha: true });
+
+    ctx.drawImage(img, sx, sy, size, size, 0, 0, outSize, outSize);
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.92));
+    if (!blob) throw new Error("blob fail");
+    return blob;
+  }
+
+  async function uploadIconBlob(userId, blob) {
+    // path: userId/yyyyMMddHHmmss-rand.png
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
+    const rand = Math.random().toString(16).slice(2, 10);
+    const path = `${userId}/${stamp}-${rand}.png`;
+
+    const { error: upErr } = await sb
+      .storage
+      .from(ICON_BUCKET)
+      .upload(path, blob, { contentType: "image/png", upsert: false });
+
+    if (upErr) throw upErr;
+
+    const { data } = sb.storage.from(ICON_BUCKET).getPublicUrl(path);
+    const url = data?.publicUrl;
+    if (!url) throw new Error("public url fail");
+    return url;
+  }
+
+  // -----------------------------
+  // Create Habit
+  // -----------------------------
   async function createHabit() {
     if (!state.session) return;
 
@@ -671,12 +774,33 @@
 
     if (!title) { $("#habitMsg").textContent = "목표 이름부터 써라."; return; }
 
-    const payload = { user_id: userId, title, emoji, icon: emoji, color: state.themeText || "#111111", is_active: true };
+    let iconUrl = null;
+    if (state.pendingPhotoBlob) {
+      try {
+        iconUrl = await uploadIconBlob(userId, state.pendingPhotoBlob);
+      } catch (e) {
+        console.error(e);
+        $("#habitMsg").textContent = "사진 업로드가 실패했다. 버킷 만들었는지 확인해.";
+        return;
+      }
+    }
+
+    const payload = {
+      user_id: userId,
+      title,
+      emoji,
+      icon: emoji,
+      icon_url: iconUrl,
+      color: state.themeText || "#111111",
+      is_active: true
+    };
+
     const { error } = await sb.from("habits").insert(payload);
     if (error) throw error;
 
     $("#habitTitle").value = "";
     $("#habitMsg").textContent = "";
+    resetHabitPhotoUI();
     closeAllModals();
     await reloadAll();
   }
@@ -709,6 +833,30 @@
 
     $("#btnPrev").addEventListener("click", () => gotoPrevMonth().catch((e) => { console.error(e); alert("이동 실패"); }));
     $("#btnNext").addEventListener("click", () => gotoNextMonth().catch((e) => { console.error(e); alert("이동 실패"); }));
+
+    // 사진 선택
+    $("#habitPhoto").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      state.pendingPhotoFile = file;
+
+      try {
+        const blob = await centerCropToBlob(file, 128);
+        state.pendingPhotoBlob = blob;
+
+        const previewUrl = URL.createObjectURL(blob);
+        $("#habitPhotoImg").src = previewUrl;
+        $("#habitPhotoPreview").classList.remove("hidden");
+      } catch (err) {
+        console.error(err);
+        state.pendingPhotoBlob = null;
+        $("#habitMsg").textContent = "사진 처리 실패. 다른 사진으로 해봐.";
+      }
+    });
+
+    $("#btnClearPhoto").addEventListener("click", () => {
+      resetHabitPhotoUI();
+    });
   }
 
   async function afterLogin() {
