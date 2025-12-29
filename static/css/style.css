@@ -1,23 +1,28 @@
-/* Plan Calendar - mobile-first, cleaner UI */
-/* Fonts: Nunito + Jua (best-effort) */
+/* Plan Calendar - themed surfaces + subtle split cell */
+/* Defaults (will be overridden by JS theme vars) */
 :root{
+  /* user-controlled */
   --bg: #f6f7fb;
-  --card: #ffffff;
   --text: #111111;
-  --muted: #6b7280;
 
-  /* softer borders/shadows (less '촌스러움') */
+  /* derived (JS writes these) */
+  --surface: #ffffff;        /* card/shell background */
+  --surface2: #f3f4f6;       /* secondary surfaces */
+  --cell-top: #ffffff;       /* date area */
+  --cell-bottom: #f7f8fb;    /* content/emoji area */
   --border: rgba(17,17,17,0.08);
   --border2: rgba(17,17,17,0.12);
+  --muted: rgba(17,17,17,0.55);
   --shadow: 0 8px 22px rgba(0,0,0,0.06);
 
-  --sun: #e11d48;  /* red */
-  --sat: #2563eb;  /* blue */
+  --sun: #e11d48;
+  --sat: #2563eb;
   --holiday: #dc2626;
 }
 
 *{ box-sizing: border-box; }
 html, body { height: 100%; }
+
 body{
   margin:0;
   background: var(--bg);
@@ -32,7 +37,7 @@ body{
 .hidden{ display:none !important; }
 
 .container{
-  max-width: 520px;  /* ✅ 모바일 우선 */
+  max-width: 520px;
   margin: 0 auto;
   padding: 14px 12px 18px;
 }
@@ -41,7 +46,7 @@ body{
 }
 
 .card{
-  background: var(--card);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 18px;
   box-shadow: var(--shadow);
@@ -69,10 +74,11 @@ body{
   border-radius: 14px;
   font-size: 15px;
   outline: none;
-  background: #fff;
+  background: var(--surface);
+  color: var(--text);
 }
 .field input:focus, .field select:focus{
-  border-color: rgba(17,17,17,0.32);
+  border-color: var(--border2);
 }
 
 .hint{ font-size: 12px; color: var(--muted); margin-top: 8px; }
@@ -96,21 +102,21 @@ button{
   -webkit-tap-highlight-color: transparent;
 }
 .primary{
-  background: #111;
-  color: #fff;
+  background: var(--text);
+  color: var(--surface);
   padding: 12px 14px;
   border-radius: 14px;
   font-weight: 900;
 }
-.primary:hover{ background:#000; }
+.primary:hover{ filter: brightness(0.95); }
 
 .ghostbtn{
-  background: rgba(17,17,17,0.06);
+  background: rgba(0,0,0,0.06);
   padding: 12px 14px;
   border-radius: 14px;
   font-weight: 900;
 }
-.ghostbtn:hover{ background: rgba(17,17,17,0.10); }
+.ghostbtn:hover{ background: rgba(0,0,0,0.10); }
 
 .fullbtn{ width: 100%; }
 
@@ -122,11 +128,10 @@ button{
   border-radius: 14px;
   font-weight: 900;
 }
-.dangerbtn:hover{ background: rgba(225,29,72,0.14); }
 
 /* Calendar shell */
 .calendar-shell{
-  background: var(--card);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 22px;
   box-shadow: var(--shadow);
@@ -140,8 +145,6 @@ button{
   gap: 8px;
   padding: 6px 4px 10px;
 }
-
-/* ✅ 초소형 폰에서 깨짐 방지: 2줄로 */
 @media (max-width: 380px){
   .cal-header{
     grid-template-columns: 1fr auto;
@@ -167,12 +170,6 @@ button{
   font-size: 13px;
   color: var(--muted);
 }
-.user-badge{
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.1;
-  word-break: break-all;
-}
 
 /* Month nav */
 .cal-nav{
@@ -181,7 +178,6 @@ button{
   justify-content:center;
   gap: 4px;
 }
-
 .month-title{
   font-family: "Jua", "Nunito", sans-serif;
   font-size: clamp(26px, 7vw, 32px);
@@ -202,32 +198,31 @@ button{
   justify-content:center;
   color: var(--text);
 }
-.navchev:hover{ background: rgba(17,17,17,0.06); }
+.navchev:hover{ background: rgba(0,0,0,0.06); }
 
-/* Actions */
 .cal-actions{
   display:flex;
   align-items:center;
   justify-content:flex-end;
 }
 
-/* ✅ 설정 버튼: 작은 2D, 배경에 녹아드는 느낌 */
+/* Settings button */
 .settingsbtn{
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: rgba(17,17,17,0.06);
-  border: 1px solid rgba(17,17,17,0.06);
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
   display:flex;
   align-items:center;
   justify-content:center;
 }
-.settingsbtn:hover{ background: rgba(17,17,17,0.10); }
+.settingsbtn:hover{ background: rgba(0,0,0,0.10); }
 .settingsbtn:active{ transform: scale(0.98); }
 .gearicon{
   width: 18px;
   height: 18px;
-  fill: rgba(17,17,17,0.75);
+  fill: rgba(0,0,0,0.72);
 }
 
 /* Weekdays */
@@ -251,50 +246,58 @@ button{
   gap: clamp(6px, 1.8vw, 10px);
 }
 
+/* Subtle split: date area a bit "denser", bottom a bit "airier" */
 .day{
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(17,17,17,0.07);
+  background: linear-gradient(
+    to bottom,
+    var(--cell-top) 0%,
+    var(--cell-top) 52%,
+    var(--cell-bottom) 52%,
+    var(--cell-bottom) 100%
+  );
+  border: 1px solid rgba(0,0,0,0.07);
+  border-color: var(--border);
   border-radius: 18px;
   min-height: clamp(76px, 12.5vw, 102px);
   padding: clamp(8px, 2.2vw, 12px);
   display:flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
   touch-action: manipulation;
 }
+
 .day:hover{
   box-shadow: 0 10px 22px rgba(0,0,0,0.07);
-  border-color: rgba(17,17,17,0.14);
+  border-color: var(--border2);
 }
 .day:active{ transform: scale(0.985); }
 
 .day.empty{
-  background: rgba(17,17,17,0.02);
+  background: rgba(0,0,0,0.02);
   border-style: dashed;
   box-shadow: none;
 }
 
 .day-num{
   display:flex;
-  justify-content:flex-end;   /* 우상단 */
+  justify-content:flex-end;
   align-items:center;
   font-size: 11px;
   font-weight: 900;
-  color: #374151;
-  letter-spacing: -0.02em;
+  color: rgba(0,0,0,0.72);
 }
 .day.sun .day-num{ color: var(--sun); }
 .day.sat .day-num{ color: var(--sat); }
 .day.holiday .day-num{ color: var(--holiday); }
 
 .day.today{
-  border-color: rgba(17,17,17,0.38);
-  box-shadow: 0 0 0 3px rgba(17,17,17,0.05);
+  border-color: rgba(0,0,0,0.25);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
 }
 .day.selected{
-  background: rgba(17,17,17,0.035);
-  border-color: rgba(17,17,17,0.26);
+  border-color: rgba(0,0,0,0.22);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.03);
 }
 
 /* Emoji area */
@@ -314,15 +317,12 @@ button{
   height: 1em;
 }
 
-/* 1개면 크게 */
 .day-dots.emoji-count-1{
   justify-content:center;
   align-items:center;
   min-height: 46px;
 }
 .day-dots.emoji-count-1 .e{ font-size: 34px; }
-
-/* 여러개면 자동 축소 */
 .day-dots.emoji-count-2 .e{ font-size: 24px; }
 .day-dots.emoji-count-3 .e{ font-size: 22px; }
 .day-dots.emoji-count-4 .e{ font-size: 19px; }
@@ -338,7 +338,7 @@ button{
 .day-dots.emoji-count-14 .e,
 .day-dots.emoji-count-15 .e{ font-size: 14px; }
 
-/* ============ Modal ============ */
+/* Modal */
 .modal.hidden{ display:none; }
 .modal{ position: fixed; inset:0; z-index: 50; }
 .modal-backdrop{ position:absolute; inset:0; background: rgba(0,0,0,0.42); }
@@ -349,10 +349,11 @@ button{
   top:50%;
   transform: translate(-50%, -50%);
   width: min(680px, calc(100% - 22px));
-  background: #fff;
+  background: var(--surface);
   border-radius: 22px;
   overflow:hidden;
   box-shadow: 0 30px 80px rgba(0,0,0,0.30);
+  border: 1px solid var(--border);
 }
 
 .modal-header, .modal-footer{
@@ -362,8 +363,8 @@ button{
   justify-content: space-between;
   gap: 10px;
 }
-.modal-header{ border-bottom: 1px solid rgba(17,17,17,0.08); }
-.modal-footer{ border-top: 1px solid rgba(17,17,17,0.08); }
+.modal-header{ border-bottom: 1px solid var(--border); }
+.modal-footer{ border-top: 1px solid var(--border); }
 
 .modal-title{
   font-family: "Jua", "Nunito", sans-serif;
@@ -374,13 +375,13 @@ button{
   width: 40px;
   height: 40px;
   border-radius: 14px;
-  background: rgba(17,17,17,0.06);
+  background: rgba(0,0,0,0.06);
   font-size: 20px;
   display:flex;
   align-items:center;
   justify-content:center;
 }
-.xbtn:hover{ background: rgba(17,17,17,0.10); }
+.xbtn:hover{ background: rgba(0,0,0,0.10); }
 
 .modal-body{ padding: 12px 14px; max-height: 66vh; overflow:auto; }
 
@@ -392,8 +393,9 @@ button{
   justify-content: space-between;
   gap: 10px;
   padding: 12px 12px;
-  border: 1px solid rgba(17,17,17,0.08);
+  border: 1px solid var(--border);
   border-radius: 16px;
+  background: var(--surface2);
 }
 .habit-left{ display:flex; align-items:center; gap: 10px; }
 .habit-emoji{ font-size: 20px; }
@@ -430,9 +432,9 @@ button{
 .colorpick{
   width: 56px;
   height: 40px;
-  border: 1px solid rgba(17,17,17,0.10);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
   padding: 0;
 }
 .setting-actions{
@@ -442,6 +444,6 @@ button{
 }
 .divider{
   height: 1px;
-  background: rgba(17,17,17,0.08);
+  background: var(--border);
   margin: 14px 0;
 }
