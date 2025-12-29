@@ -9,46 +9,31 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-  const STORAGE = {
-    accent: "plan_cal_accent",
-    holidays: (year) => `plan_cal_holidays_KR_${year}`,
-  };
-
   const state = {
     session: null,
     year: null,
     month: null, // 1-12
-    habits: [],
+    habits: [], // [{id,title,emoji}]
     logsByDate: {}, // { 'YYYY-MM-DD': [habit_id,...] }
     activeDate: null,
-    holidaysByYear: {}, // { [year]: Set<YYYY-MM-DD> }
+    holidaySet: new Set(), // YYYY-MM-DD
+    holidayYearLoaded: null,
   };
 
   // -----------------------------
   // Utils
   // -----------------------------
   const pad2 = (n) => String(n).padStart(2, "0");
-
-  function isoDate(y, m, d) {
-    return `${y}-${pad2(m)}-${pad2(d)}`;
-  }
+  const isoDate = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
 
   function monthRange(y, m) {
-    // [startISO, endISO)
     const start = `${y}-${pad2(m)}-01`;
     const end = m === 12 ? `${y + 1}-01-01` : `${y}-${pad2(m + 1)}-01`;
     return [start, end];
   }
 
-  function openModal(idSel) {
-    const el = $(idSel);
-    if (el) el.classList.remove("hidden");
-  }
-
-  function closeAllModals() {
-    $$(".modal").forEach((m) => m.classList.add("hidden"));
-  }
-
+  function openModal(idSel) { const el = $(idSel); if (el) el.classList.remove("hidden"); }
+  function closeAllModals() { $$(".modal").forEach((m) => m.classList.add("hidden")); }
   function show(el) { el.classList.remove("hidden"); }
   function hide(el) { el.classList.add("hidden"); }
 
@@ -62,71 +47,42 @@
   }
 
   // -----------------------------
-  // Theme
-  // -----------------------------
-  function applyAccent(hex) {
-    if (!hex) return;
-    document.documentElement.style.setProperty("--accent", hex);
-  }
-
-  function initTheme() {
-    const saved = localStorage.getItem(STORAGE.accent);
-    if (saved) applyAccent(saved);
-
-    const input = $("#themeAccent");
-    if (input) {
-      input.value = saved || getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#111111";
-      input.addEventListener("input", () => {
-        const v = input.value;
-        applyAccent(v);
-        localStorage.setItem(STORAGE.accent, v);
-      });
-    }
-  }
-
-  // -----------------------------
-  // Holidays (KR) - best-effort
+  // Holidays (KR) - best effort
   // -----------------------------
   async function ensureHolidays(year) {
-    if (state.holidaysByYear[year]) return;
+    if (state.holidayYearLoaded === year && state.holidaySet.size) return;
 
-    // 1) localStorage cache
-    const cached = localStorage.getItem(STORAGE.holidays(year));
-    if (cached) {
-      try {
-        const arr = JSON.parse(cached);
-        if (Array.isArray(arr)) {
-          state.holidaysByYear[year] = new Set(arr.filter((x) => typeof x === "string"));
-          return;
-        }
-      } catch (_) { /* ignore */ }
-    }
-
-    // 2) try fetch (Nager.Date public API)
+    // local cache
+    const cacheKey = `holidays_kr_${year}`;
     try {
-      const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/KR`, { cache: "no-store" });
-      if (!res.ok) throw new Error(`Holiday fetch failed: ${res.status}`);
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const arr = JSON.parse(cached);
+        state.holidaySet = new Set(arr);
+        state.holidayYearLoaded = year;
+        return;
+      }
+    } catch (_) { /* ignore */ }
+
+    // best-effort fetch (if blocked, app still works)
+    try {
+      const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/KR`;
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) throw new Error(`holiday fetch failed: ${res.status}`);
       const data = await res.json();
-
-      const dates = (Array.isArray(data) ? data : [])
+      const dates = (data || [])
         .map((x) => x?.date)
-        .filter((d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d));
+        .filter((x) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x));
+      state.holidaySet = new Set(dates);
+      state.holidayYearLoaded = year;
 
-      const set = new Set(dates);
-      state.holidaysByYear[year] = set;
-      localStorage.setItem(STORAGE.holidays(year), JSON.stringify([...set]));
+      try { localStorage.setItem(cacheKey, JSON.stringify(dates)); } catch (_) { /* ignore */ }
     } catch (e) {
-      // 네트워크/CORS/차단 등으로 실패 가능. 실패해도 앱은 돌아가야 함.
-      console.warn(e);
-      state.holidaysByYear[year] = new Set();
+      // fallback: no holidays
+      state.holidaySet = new Set();
+      state.holidayYearLoaded = year;
+      // console.info("Holiday fetch skipped:", e?.message || e);
     }
-  }
-
-  function isHoliday(dateISO) {
-    const y = parseInt(dateISO.slice(0, 4), 10);
-    const set = state.holidaysByYear[y];
-    if (!set) return false;
-    return set.has(dateISO);
   }
 
   // -----------------------------
@@ -143,24 +99,26 @@
 
     const loginCard = $("#loginCard");
     const appShell = $("#appShell");
+    const btnLogout = $("#btnLogout");
 
     if (!sess) {
       show(loginCard);
       hide(appShell);
+      hide(btnLogout);
+      $("#userBadge").textContent = "";
       return false;
     }
 
     hide(loginCard);
     show(appShell);
+    show(btnLogout);
 
     const email = sess.user?.email || "";
-    const badge = $("#userBadge");
-    if (badge) badge.textContent = email ? `로그인: ${email}` : "로그인됨";
+    $("#userBadge").textContent = email ? email : "";
     return true;
   }
 
   function bindAuthUI() {
-    // 로그인
     $("#btnSignIn").addEventListener("click", async () => {
       $("#msg").textContent = "";
       const email = ($("#email").value || "").trim();
@@ -176,7 +134,7 @@
       await afterLogin();
     });
 
-    // 회원가입: 모달 열기
+    // 회원가입 모달
     $("#btnSignUp").addEventListener("click", () => {
       const currentEmail = ($("#email").value || "").trim();
 
@@ -189,10 +147,8 @@
       setTimeout(() => $("#signupEmail")?.focus(), 0);
     });
 
-    // 회원가입 실행
     $("#btnDoSignUp").addEventListener("click", async () => {
       $("#signupMsg").textContent = "";
-
       const email = ($("#signupEmail").value || "").trim();
       const password = $("#signupPassword").value || "";
       const password2 = $("#signupPassword2").value || "";
@@ -213,7 +169,6 @@
       const { data, error } = await sb.auth.signUp({ email, password });
       if (error) { $("#signupMsg").textContent = error.message; return; }
 
-      // Confirm email OFF면 session이 바로 생길 수 있음
       if (data?.session) {
         $("#signupMsg").textContent = "가입 완료. 바로 로그인됨.";
         closeAllModals();
@@ -221,21 +176,19 @@
         return;
       }
 
-      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. Confirm email OFF 확인. 일단 로그인 눌러.";
+      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. Confirm email OFF 저장됐는지 확인. 일단 로그인 눌러.";
       $("#email").value = email;
       $("#password").value = "";
     });
 
-    // 로그아웃
     $("#btnLogout").addEventListener("click", async () => {
       await sb.auth.signOut();
-      closeAllModals();
       await ensureAuthedOrShowLogin();
     });
   }
 
   // -----------------------------
-  // Calendar
+  // Calendar render
   // -----------------------------
   function initYearMonth() {
     const now = new Date();
@@ -243,8 +196,9 @@
     state.month = now.getMonth() + 1;
   }
 
-  function setTitle() {
-    $("#ymTitle").textContent = `${state.year}년 ${state.month}월`;
+  function setHeader() {
+    $("#yearLabel").textContent = String(state.year);
+    $("#ymTitle").textContent = `${state.month}월`;
   }
 
   function markTodayAndSelected() {
@@ -255,16 +209,18 @@
 
     $$("#calGrid .day").forEach((cell) => {
       if (cell.classList.contains("empty")) return;
-      const dayNum = parseInt(cell.getAttribute("data-day"), 10);
-      cell.classList.toggle("today", ty === state.year && tm === state.month && dayNum === td);
 
+      const dayNum = parseInt(cell.getAttribute("data-day"), 10);
       const date = isoDate(state.year, state.month, dayNum);
+
+      cell.classList.toggle("today", ty === state.year && tm === state.month && dayNum === td);
       cell.classList.toggle("selected", state.activeDate === date);
+      cell.classList.toggle("holiday", state.holidaySet.has(date));
     });
   }
 
   function renderCalendarGrid() {
-    setTitle();
+    setHeader();
 
     const grid = $("#calGrid");
     grid.innerHTML = "";
@@ -273,7 +229,7 @@
     const m = state.month;
 
     const first = new Date(y, m - 1, 1);
-    const firstDow = first.getDay(); // 0 sun
+    const firstDow = first.getDay(); // 0=sun
     const lastDay = new Date(y, m, 0).getDate();
 
     // 6주(42칸) 고정
@@ -288,14 +244,13 @@
         continue;
       }
 
-      const dow = new Date(y, m - 1, dayNum).getDay(); // 0=sun,6=sat
+      const dateObj = new Date(y, m - 1, dayNum);
+      const dow = dateObj.getDay();
       cell.className = "day";
-      if (dow === 0 || dow === 6) cell.classList.add("weekend");
+      if (dow === 0) cell.classList.add("sun");
+      if (dow === 6) cell.classList.add("sat");
 
       cell.setAttribute("data-day", String(dayNum));
-
-      const date = isoDate(y, m, dayNum);
-      if (isHoliday(date)) cell.classList.add("holiday");
 
       const top = document.createElement("div");
       top.className = "day-num";
@@ -303,7 +258,7 @@
 
       const emojis = document.createElement("div");
       emojis.className = "day-dots";
-      emojis.setAttribute("data-date", date);
+      emojis.setAttribute("data-date", isoDate(y, m, dayNum));
 
       cell.appendChild(top);
       cell.appendChild(emojis);
@@ -321,7 +276,6 @@
     return (h?.emoji || h?.icon || "✅").trim() || "✅";
   }
 
-  // ✅ 점 대신 이모지 표시
   function renderEmojis() {
     $$(".day-dots").forEach((el) => {
       el.className = "day-dots";
@@ -341,29 +295,29 @@
       const clamp = Math.min(Math.max(count, 1), 15);
       el.classList.add(`emoji-count-${clamp}`);
 
-      el.innerHTML = emojis.map((e) => `<span class="e" aria-hidden="true">${escapeHtml(e)}</span>`).join("");
+      el.innerHTML = emojis
+        .map((e) => `<span class="e" aria-hidden="true">${escapeHtml(e)}</span>`)
+        .join("");
     });
   }
 
   // -----------------------------
-  // Supabase direct CRUD
+  // Supabase CRUD
   // -----------------------------
   async function loadHabits() {
     const { data, error } = await sb
       .from("habits")
-      .select("id,title,emoji,icon,color,period_unit,period_value,target_count,frequency_days,is_active,created_at")
+      .select("id,title,emoji,icon,color,is_active,created_at")
       .eq("is_active", true)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
 
     state.habits = (data || []).map((h) => ({
-      ...h,
-      emoji: h.emoji || h.icon || "✅",
-      color: h.color || "#FF9500",
-      period_unit: h.period_unit || "day",
-      period_value: h.period_value || 1,
-      target_count: h.target_count || 1,
+      id: h.id,
+      title: h.title,
+      emoji: (h.emoji || h.icon || "✅").trim() || "✅",
+      color: h.color || "#111111",
     }));
   }
 
@@ -392,11 +346,12 @@
     await ensureHolidays(state.year);
     await loadHabits();
     await loadLogsForMonth();
-    renderCalendarGrid(); // holiday/weekend class 반영 포함
+    renderEmojis();
+    markTodayAndSelected();
   }
 
   // -----------------------------
-  // Habit / Log modals
+  // Modals: checklist
   // -----------------------------
   function renderHabitChecklist(date) {
     const checked = new Set(state.logsByDate[date] || []);
@@ -442,6 +397,7 @@
     if (!state.session) return;
     const date = isoDate(state.year, state.month, dayNum);
     state.activeDate = date;
+
     $("#modalDateTitle").textContent = date;
     renderHabitChecklist(date);
     markTodayAndSelected();
@@ -486,34 +442,28 @@
     closeAllModals();
   }
 
+  // -----------------------------
+  // Modal: create habit (simple)
+  // -----------------------------
   async function createHabit() {
     if (!state.session) return;
 
     const userId = state.session.user.id;
 
     const title = ($("#habitTitle").value || "").trim();
-    const emoji = ($("#habitEmoji").value || "").trim() || "✅";
-    const color = ($("#habitColor").value || "").trim() || "#FF9500";
-    const period_unit = $("#habitUnit").value;
-    const period_value = Math.max(1, parseInt($("#habitUnitValue").value, 10) || 1);
-    const target_count = Math.max(1, parseInt($("#habitTarget").value, 10) || 1);
+    const emoji = ($("#habitIcon").value || "💪").trim() || "💪";
 
-    if (!title) { alert("제목부터 써라."); return; }
-
-    let frequency_days = period_value;
-    if (period_unit === "week") frequency_days = 7 * period_value;
-    if (period_unit === "month") frequency_days = 30 * period_value;
+    if (!title) {
+      $("#habitMsg").textContent = "목표 이름부터 써라.";
+      return;
+    }
 
     const payload = {
       user_id: userId,
       title,
       emoji,
-      icon: emoji, // icon NOT NULL 대응
-      color,
-      period_unit,
-      period_value,
-      target_count,
-      frequency_days,
+      icon: emoji,     // 기존 NOT NULL 대응
+      color: "#111111",
       is_active: true,
     };
 
@@ -521,6 +471,7 @@
     if (error) throw error;
 
     $("#habitTitle").value = "";
+    $("#habitMsg").textContent = "";
     closeAllModals();
     await reloadAll();
   }
@@ -532,21 +483,25 @@
     if (state.month === 1) { state.month = 12; state.year -= 1; }
     else state.month -= 1;
 
-    await reloadAll();
+    await ensureHolidays(state.year);
+    renderCalendarGrid();
+    if (state.session) await reloadAll();
   }
 
   async function gotoNextMonth() {
     if (state.month === 12) { state.month = 1; state.year += 1; }
     else state.month += 1;
 
-    await reloadAll();
+    await ensureHolidays(state.year);
+    renderCalendarGrid();
+    if (state.session) await reloadAll();
   }
 
   // -----------------------------
   // Bind UI
   // -----------------------------
   function bindUI() {
-    // modal close
+    // close modal
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
 
     $("#btnSaveDay").addEventListener("click", () => {
@@ -556,7 +511,11 @@
       });
     });
 
-    $("#btnAddHabit").addEventListener("click", () => openModal("#habitModal"));
+    $("#btnAddHabit").addEventListener("click", () => {
+      $("#habitMsg").textContent = "";
+      openModal("#habitModal");
+      setTimeout(() => $("#habitTitle")?.focus(), 0);
+    });
 
     $("#btnCreateHabit").addEventListener("click", () => {
       createHabit().catch((e) => {
@@ -572,14 +531,14 @@
     $("#btnNext").addEventListener("click", () => {
       gotoNextMonth().catch((e) => { console.error(e); alert("이동 실패"); });
     });
-
-    const settingsBtn = $("#btnSettings");
-    if (settingsBtn) settingsBtn.addEventListener("click", () => openModal("#settingsModal"));
   }
 
   async function afterLogin() {
     const ok = await ensureAuthedOrShowLogin();
     if (!ok) return;
+
+    await ensureHolidays(state.year);
+    renderCalendarGrid();
     await reloadAll();
   }
 
@@ -587,14 +546,14 @@
   // Boot
   // -----------------------------
   async function main() {
-    initTheme();
     initYearMonth();
     bindAuthUI();
     bindUI();
+    await ensureHolidays(state.year);
+    renderCalendarGrid();
 
     const ok = await ensureAuthedOrShowLogin();
     if (!ok) return;
-
     await reloadAll();
   }
 
