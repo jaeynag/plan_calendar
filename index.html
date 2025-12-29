@@ -21,19 +21,7 @@
 
 <body>
   <div class="container">
-    <header class="topbar">
-      <div class="left">
-        <div class="title">Plan Cal</div>
-        <div class="subtitle" id="ymTitle"></div>
-      </div>
-      <div class="right">
-        <button id="btnPrev" class="nav-btn" type="button">이전</button>
-        <button id="btnNext" class="nav-btn" type="button">다음</button>
-        <button id="btnLogout" class="nav-btn danger hidden" type="button">로그아웃</button>
-      </div>
-    </header>
-
-    <!-- 로그인 카드 -->
+<!-- 로그인 카드 -->
     <section id="loginCard" class="card hidden">
       <div class="subtitle" style="margin-bottom:8px;">로그인</div>
 
@@ -57,25 +45,52 @@
 
     <!-- 앱 본문 -->
     <section id="appShell" class="hidden">
-      <section class="toolbar">
-        <button id="btnAddHabit" type="button" class="primary">목표 추가</button>
-        <div id="userBadge" class="badge"></div>
-      </section>
-
       <section class="calendar">
-        <div class="weekdays">
-          <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+        <div class="cal-top">
+          <button id="btnSettings" class="icon-btn" type="button" aria-label="설정">⚙</button>
+          <div class="cal-nav">
+            <button id="btnPrev" class="icon-btn" type="button" aria-label="이전 달">‹</button>
+            <div id="ymTitle" class="cal-title" aria-live="polite"></div>
+            <button id="btnNext" class="icon-btn" type="button" aria-label="다음 달">›</button>
+          </div>
         </div>
+
+        <div class="weekdays" aria-hidden="true">
+          <div class="sun">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="sat">토</div>
+        </div>
+
         <div class="grid" id="calGrid"></div>
       </section>
 
-      <!-- 하단 패널(여기부터 확장) -->
-      <section class="bottom-panel" id="bottomPanel"></section>
+      <button id="btnAddHabit" class="fab" type="button" aria-label="목표 추가">＋</button>
     </section>
-  </div>
 
+    <!-- 설정 모달 -->
+    <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" data-close="1"></div>
+      <div class="modal-panel">
+        <div class="modal-header">
+          <div class="modal-title">설정</div>
+          <button class="xbtn" data-close="1" type="button">×</button>
+        </div>
 
-  <!-- 회원가입 모달 -->
+        <div class="modal-body">
+          <div class="subtitle" id="userBadge" style="margin-bottom:10px;"></div>
+
+          <label class="field">
+            <span>달력 베이스 색상</span>
+            <input id="themeAccent" type="color" value="#111111" />
+            <div class="hint">이 색이 버튼/강조(오늘/선택)에 쓰인다.</div>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button class="nav-btn" data-close="1" type="button">닫기</button>
+          <button id="btnLogout" class="nav-btn danger" type="button">로그아웃</button>
+        </div>
+      </div>
+    </div>
+<!-- 회원가입 모달 -->
   <div id="signupModal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop" data-close="1"></div>
     <div class="modal-panel">
@@ -143,7 +158,24 @@
         <div class="row">
           <label class="field">
             <span>이모지</span>
-            <input id="habitEmoji" type="text" value="✅" maxlength="4"/>
+            <input id="habitEmoji" type="text" value="💪" maxlength="6" list="emojiList"/>
+            <datalist id="emojiList">
+              <option value="💪">운동</option>
+              <option value="📚">독서</option>
+              <option value="✏️">공부</option>
+              <option value="💻">코딩</option>
+              <option value="🧘">명상</option>
+              <option value="💧">물</option>
+              <option value="🏃">러닝</option>
+              <option value="🤸">스트레칭</option>
+              <option value="💊">약</option>
+              <option value="📝">일기</option>
+              <option value="🧹">청소</option>
+              <option value="🥗">식단</option>
+              <option value="😴">수면</option>
+              <option value="🎸">악기</option>
+              <option value="📷">사진</option>
+            </datalist>
           </label>
           <label class="field">
             <span>색상(hex)</span>
