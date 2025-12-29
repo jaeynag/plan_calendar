@@ -1,888 +1,440 @@
-/* global supabase */
-(() => {
-  const { createClient } = supabase;
+/* Plan Calendar v10
+   - day cell corners: square
+   - icons: 2 columns, flow down (max 6 shown)
+   - prevent horizontal widening/overflow
+*/
+:root{
+  --bg: #f6f7fb;
+  --text: #111111;
 
-  const SUPABASE_URL = window.__SUPABASE_URL__;
-  const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__;
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  --surface: #ffffff;
+  --surface2: #f3f4f6;
+  --cell-top: #ffffff;
+  --cell-bottom: #f7f8fb;
 
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  --border: rgba(17,17,17,0.08);
+  --border2: rgba(17,17,17,0.12);
+  --muted: rgba(17,17,17,0.55);
+  --shadow: 0 8px 22px rgba(0,0,0,0.06);
 
-  // ✅ 사진 아이콘 저장용 버킷명 (Supabase Storage에서 생성 필요)
-  const ICON_BUCKET = "habit-icons";
+  --sun: #e11d48;
+  --sat: #2563eb;
+  --holiday: #dc2626;
+}
 
-  const THEME_DEFAULT_BG = "#f6f7fb";
-  const THEME_DEFAULT_TEXT = "#111111";
-  const THEME_KEY_BG = "theme_bg";
-  const THEME_KEY_TEXT = "theme_text";
+*{ box-sizing: border-box; }
+html, body { height: 100%; }
 
-  const state = {
-    session: null,
-    year: null,
-    month: null,
-    habits: [],            // {id,title,emoji,icon_url,start_date}
-    logsByDate: {},        // { 'YYYY-MM-DD': [habit_id,...] }
-    activeDate: null,
-    holidaySet: new Set(),
-    holidayYearLoaded: null,
-    themeBg: THEME_DEFAULT_BG,
-    themeText: THEME_DEFAULT_TEXT,
-    pendingPhotoFile: null,
-    pendingPhotoBlob: null,
-  };
+body{
+  margin:0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "맑은 고딕", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
-  // ---------- HTML escape ----------
-  function escapeHtml(s) {
-    return String(s)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
+.hidden{ display:none !important; }
+.container{ width: 100%; max-width: 100%; margin: 0; padding: 0; }
+
+.card{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+#loginCard.card{ margin: 14px 12px 18px; }
+
+.login-title{
+  font-family: "Jua", "Nunito", sans-serif;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+}
+
+.field{ display:block; margin: 12px 0; }
+.field > span{
+  display:block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.field input, .field select{
+  width:100%;
+  max-width: 100%;
+  padding: 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 15px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+}
+.field input:focus, .field select:focus{ border-color: var(--border2); }
+
+.hint{ font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+.login-actions{
+  display:flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+@media (max-width: 420px){ .login-actions{ flex-direction: column; } }
+
+button{
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.primary{
+  background: var(--text);
+  color: var(--surface);
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 900;
+}
+.primary:hover{ filter: brightness(0.95); }
+
+.ghostbtn{
+  background: rgba(0,0,0,0.06);
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 900;
+}
+.ghostbtn:hover{ background: rgba(0,0,0,0.10); }
+
+.fullbtn{ width: 100%; }
+
+.dangerbtn{
+  width: 100%;
+  background: rgba(225,29,72,0.10);
+  color: #e11d48;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 900;
+}
+
+/* Calendar fills viewport */
+#appShell .calendar-shell{
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px 12px 14px;
+  display:flex;
+  flex-direction: column;
+  overflow-x: hidden; /* ✅ 좌우 튀어나오는거 방지 */
+}
+
+@media (min-width: 768px){
+  .container{ max-width: 920px; margin: 0 auto; padding: 18px 18px 26px; }
+  #appShell .calendar-shell{
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
   }
-
-  // ---------- date utils ----------
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const isoDate = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
-
-  function toDateOnlyStr(d) {
-    const y = d.getFullYear();
-    const m = d.getMonth() + 1;
-    const dd = d.getDate();
-    return isoDate(y, m, dd);
-  }
-  function parseYmd(ymd) {
-    const [y, m, d] = String(ymd).split("-").map((x) => parseInt(x, 10));
-    return new Date(y, (m || 1) - 1, d || 1);
-  }
-  function daysInclusive(startYmd, endYmd) {
-    const a = parseYmd(startYmd);
-    const b = parseYmd(endYmd);
-    const ms = 24 * 60 * 60 * 1000;
-    const diff = Math.floor((b.getTime() - a.getTime()) / ms);
-    return Math.max(1, diff + 1);
-  }
-
-  // ---------- color utils ----------
-  function clamp01(x) { return Math.min(1, Math.max(0, x)); }
-  function hexToRgb(hex) {
-    const h = String(hex || "").replace("#", "").trim();
-    if (h.length === 3) {
-      return { r: parseInt(h[0] + h[0], 16), g: parseInt(h[1] + h[1], 16), b: parseInt(h[2] + h[2], 16) };
-    }
-    if (h.length === 6) {
-      return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
-    }
-    return { r: 17, g: 17, b: 17 };
-  }
-  function rgbToHex({ r, g, b }) {
-    const to = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
-    return "#" + to(r) + to(g) + to(b);
-  }
-  function mix(a, b, t) {
-    t = clamp01(t);
-    return { r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, b: a.b + (b.b - a.b) * t };
-  }
-  function rgba({ r, g, b }, a) {
-    a = clamp01(a);
-    return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`;
-  }
-  function luminance({ r, g, b }) {
-    const f = (c) => {
-      c /= 255;
-      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-    };
-    const R = f(r), G = f(g), B = f(b);
-    return 0.2126 * R + 0.7152 * G + 0.0722 * B;
-  }
-
-  // -----------------------------
-  // Theme
-  // -----------------------------
-  function applyTheme(bgHex, textHex) {
-    const bg = (bgHex || THEME_DEFAULT_BG).trim();
-    const text = (textHex || THEME_DEFAULT_TEXT).trim();
-
-    state.themeBg = bg;
-    state.themeText = text;
-
-    const bgRgb = hexToRgb(bg);
-    const textRgb = hexToRgb(text);
-    const isDarkBg = luminance(bgRgb) < 0.35;
-
-    const white = { r: 255, g: 255, b: 255 };
-    const surface = mix(bgRgb, white, isDarkBg ? 0.10 : 0.35);
-    const surface2 = mix(bgRgb, white, isDarkBg ? 0.06 : 0.22);
-    const cellTop = mix(surface, textRgb, isDarkBg ? 0.10 : 0.06);
-    const cellBottom = mix(surface, bgRgb, isDarkBg ? 0.25 : 0.35);
-
-    const border = rgba(textRgb, isDarkBg ? 0.18 : 0.10);
-    const border2 = rgba(textRgb, isDarkBg ? 0.26 : 0.16);
-    const muted = rgba(textRgb, isDarkBg ? 0.72 : 0.55);
-    const shadow = isDarkBg ? "0 10px 26px rgba(0,0,0,0.35)" : "0 8px 22px rgba(0,0,0,0.06)";
-
-    const root = document.documentElement;
-    root.style.setProperty("--bg", bg);
-    root.style.setProperty("--text", text);
-    root.style.setProperty("--surface", rgbToHex(surface));
-    root.style.setProperty("--surface2", rgbToHex(surface2));
-    root.style.setProperty("--cell-top", rgbToHex(cellTop));
-    root.style.setProperty("--cell-bottom", rgbToHex(cellBottom));
-    root.style.setProperty("--border", border);
-    root.style.setProperty("--border2", border2);
-    root.style.setProperty("--muted", muted);
-    root.style.setProperty("--shadow", shadow);
-
-    try {
-      localStorage.setItem(THEME_KEY_BG, bg);
-      localStorage.setItem(THEME_KEY_TEXT, text);
-    } catch (_) { }
-  }
-
-  function loadTheme() {
-    let bg = THEME_DEFAULT_BG;
-    let text = THEME_DEFAULT_TEXT;
-    try {
-      const b = localStorage.getItem(THEME_KEY_BG);
-      const t = localStorage.getItem(THEME_KEY_TEXT);
-      if (b && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(b)) bg = b;
-      if (t && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t)) text = t;
-    } catch (_) { }
-    applyTheme(bg, text);
-  }
-
-  // -----------------------------
-  // Holidays (KR)
-  // -----------------------------
-  async function ensureHolidays(year) {
-    if (state.holidayYearLoaded === year && state.holidaySet.size) return;
-
-    const cacheKey = `holidays_kr_${year}`;
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const arr = JSON.parse(cached);
-        state.holidaySet = new Set(arr);
-        state.holidayYearLoaded = year;
-        return;
-      }
-    } catch (_) { }
-
-    try {
-      const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/KR`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      const dates = (data || []).map((x) => x?.date).filter((x) => typeof x === "string");
-      state.holidaySet = new Set(dates);
-      state.holidayYearLoaded = year;
-      try { localStorage.setItem(cacheKey, JSON.stringify(dates)); } catch (_) { }
-    } catch (_) {
-      state.holidaySet = new Set();
-      state.holidayYearLoaded = year;
-    }
-  }
-
-  // -----------------------------
-  // Auth
-  // -----------------------------
-  async function refreshSession() {
-    const { data } = await sb.auth.getSession();
-    state.session = data.session || null;
-    return state.session;
-  }
-
-  async function ensureAuthedOrShowLogin() {
-    const sess = await refreshSession();
-    const loginCard = $("#loginCard");
-    const appShell = $("#appShell");
-
-    if (!sess) {
-      loginCard.classList.remove("hidden");
-      appShell.classList.add("hidden");
-      return false;
-    }
-
-    loginCard.classList.add("hidden");
-    appShell.classList.remove("hidden");
-
-    $("#settingsEmail").textContent = sess.user?.email || "-";
-    return true;
-  }
-
-  // -----------------------------
-  // Modal helpers
-  // -----------------------------
-  function openModal(sel) { const el = $(sel); if (el) el.classList.remove("hidden"); }
-  function closeAllModals() { $$(".modal").forEach((m) => m.classList.add("hidden")); }
-
-  // -----------------------------
-  // Auth UI
-  // -----------------------------
-  function bindAuthUI() {
-    $("#btnSignIn").addEventListener("click", async () => {
-      $("#msg").textContent = "";
-      const email = ($("#email").value || "").trim();
-      const password = $("#password").value || "";
-      if (!email || !password) { $("#msg").textContent = "이메일/비번부터 넣어."; return; }
-
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) { $("#msg").textContent = error.message; return; }
-      await afterLogin();
-    });
-
-    $("#btnSignUp").addEventListener("click", () => {
-      const currentEmail = ($("#email").value || "").trim();
-      $("#signupMsg").textContent = "";
-      $("#signupEmail").value = currentEmail || "";
-      $("#signupPassword").value = "";
-      $("#signupPassword2").value = "";
-      openModal("#signupModal");
-      setTimeout(() => $("#signupEmail")?.focus(), 0);
-    });
-
-    $("#btnDoSignUp").addEventListener("click", async () => {
-      $("#signupMsg").textContent = "";
-      const email = ($("#signupEmail").value || "").trim();
-      const password = $("#signupPassword").value || "";
-      const password2 = $("#signupPassword2").value || "";
-      if (!email || !password || !password2) { $("#signupMsg").textContent = "메일/비번/비번확인까지 다 넣어."; return; }
-      if (password.length < 6) { $("#signupMsg").textContent = "비번은 6자 이상으로."; return; }
-      if (password !== password2) { $("#signupMsg").textContent = "비번이랑 비번확인이 안 맞는다."; return; }
-
-      const { data, error } = await sb.auth.signUp({ email, password });
-      if (error) { $("#signupMsg").textContent = error.message; return; }
-
-      if (data?.session) {
-        closeAllModals();
-        await afterLogin();
-        return;
-      }
-
-      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. Confirm email OFF 확인. 일단 로그인 눌러.";
-      $("#email").value = email;
-      $("#password").value = "";
-    });
-  }
-
-  // -----------------------------
-  // Settings UI
-  // -----------------------------
-  function bindSettingsUI() {
-    $("#btnSettings").addEventListener("click", async () => {
-      await refreshSession();
-      $("#settingsEmail").textContent = state.session?.user?.email || "-";
-      $("#themeBg").value = state.themeBg || THEME_DEFAULT_BG;
-      $("#themeText").value = state.themeText || THEME_DEFAULT_TEXT;
-      openModal("#settingsModal");
-    });
-
-    $("#themeBg").addEventListener("input", (e) => applyTheme(e.target.value, state.themeText));
-    $("#themeText").addEventListener("input", (e) => applyTheme(state.themeBg, e.target.value));
-
-    $("#btnThemeReset").addEventListener("click", () => {
-      applyTheme(THEME_DEFAULT_BG, THEME_DEFAULT_TEXT);
-      $("#themeBg").value = THEME_DEFAULT_BG;
-      $("#themeText").value = THEME_DEFAULT_TEXT;
-    });
-
-    $("#btnOpenHabit").addEventListener("click", () => {
-      closeAllModals();
-      resetHabitPhotoUI();
-      $("#habitMsg").textContent = "";
-      openModal("#habitModal");
-      setTimeout(() => $("#habitTitle")?.focus(), 0);
-    });
-
-    $("#btnOpenProgress").addEventListener("click", async () => {
-      closeAllModals();
-      await openProgress();
-    });
-
-    $("#btnLogout").addEventListener("click", async () => {
-      await sb.auth.signOut();
-      closeAllModals();
-      await ensureAuthedOrShowLogin();
-    });
-  }
-
-  // -----------------------------
-  // Progress
-  // -----------------------------
-  async function openProgress() {
-    $("#progressMsg").textContent = "";
-    $("#progressList").innerHTML = "";
-
-    if (!state.session) {
-      $("#progressMsg").textContent = "로그인부터 해.";
-      openModal("#progressModal");
-      return;
-    }
-
-    try {
-      const { data: habits, error: he } = await sb
-        .from("habits")
-        .select("id,title,emoji,icon,icon_url,start_date,created_at,is_active")
-        .eq("is_active", true)
-        .order("created_at", { ascending: true });
-      if (he) throw he;
-
-      const list = (habits || []).map((h) => ({
-        id: h.id,
-        title: h.title,
-        emoji: (h.emoji || h.icon || "✅").trim() || "✅",
-        icon_url: h.icon_url || null,
-        start_date: h.start_date || (h.created_at ? String(h.created_at).slice(0, 10) : null),
-      }));
-
-      if (!list.length) {
-        $("#progressMsg").textContent = "목표가 없다. 목표부터 추가해.";
-        openModal("#progressModal");
-        return;
-      }
-
-      const today = toDateOnlyStr(new Date());
-      const minStart = list
-        .map((h) => h.start_date)
-        .filter(Boolean)
-        .sort()[0] || today;
-
-      const { data: logs, error: le } = await sb
-        .from("habit_logs")
-        .select("habit_id,check_date")
-        .gte("check_date", minStart)
-        .lte("check_date", today);
-      if (le) throw le;
-
-      const counts = new Map();
-      for (const r of (logs || [])) {
-        const hid = r.habit_id;
-        counts.set(hid, (counts.get(hid) || 0) + 1);
-      }
-
-      const wrap = $("#progressList");
-      wrap.innerHTML = "";
-      for (const h of list) {
-        const start = h.start_date || today;
-        const totalDays = daysInclusive(start, today);
-        const done = counts.get(h.id) || 0;
-
-        const row = document.createElement("div");
-        row.className = "progress-row";
-
-        const left = document.createElement("div");
-        left.className = "progress-left";
-
-        const iconWrap = document.createElement("div");
-        iconWrap.className = "habit-icon";
-        if (h.icon_url) {
-          const img = document.createElement("img");
-          img.src = h.icon_url;
-          img.alt = "";
-          iconWrap.appendChild(img);
-        } else {
-          const span = document.createElement("span");
-          span.className = "icon-emoji";
-          span.textContent = h.emoji;
-          iconWrap.appendChild(span);
-        }
-
-        const title = document.createElement("div");
-        title.className = "progress-title";
-        title.textContent = h.title;
-
-        left.appendChild(iconWrap);
-        left.appendChild(title);
-
-        const right = document.createElement("div");
-        right.className = "progress-right";
-
-        const count = document.createElement("div");
-        count.className = "progress-count";
-        count.textContent = `${done} / ${totalDays}`;
-
-        const sub = document.createElement("div");
-        sub.className = "progress-sub";
-        sub.textContent = `${start} ~ ${today}`;
-
-        right.appendChild(count);
-        right.appendChild(sub);
-
-        row.appendChild(left);
-        row.appendChild(right);
-
-        wrap.appendChild(row);
-      }
-
-      openModal("#progressModal");
-    } catch (e) {
-      console.error(e);
-      $("#progressMsg").textContent = "진행상황 불러오다 터졌다. 콘솔 봐.";
-      openModal("#progressModal");
-    }
-  }
-
-  // -----------------------------
-  // Calendar
-  // -----------------------------
-  function initYearMonth() {
-    const now = new Date();
-    state.year = now.getFullYear();
-    state.month = now.getMonth() + 1;
-  }
-
-  function monthRange(y, m) {
-    const start = `${y}-${pad2(m)}-01`;
-    const end = m === 12 ? `${y + 1}-01-01` : `${y}-${pad2(m + 1)}-01`;
-    return [start, end];
-  }
-
-  function setHeader() {
-    $("#yearLabel").textContent = String(state.year);
-    $("#ymTitle").textContent = `${state.month}월`;
-  }
-
-  function computeWeeksInMonth(y, m) {
-    const first = new Date(y, m - 1, 1);
-    const firstDow = first.getDay();
-    const lastDay = new Date(y, m, 0).getDate();
-    const cells = firstDow + lastDay;
-    return Math.ceil(cells / 7); // 4~6
-  }
-
-  function markTodaySelectedHoliday() {
-    const now = new Date();
-    const ty = now.getFullYear();
-    const tm = now.getMonth() + 1;
-    const td = now.getDate();
-
-    $$("#calGrid .day").forEach((cell) => {
-      if (cell.classList.contains("empty")) return;
-      const dayNum = parseInt(cell.getAttribute("data-day"), 10);
-      const date = isoDate(state.year, state.month, dayNum);
-      cell.classList.toggle("today", ty === state.year && tm === state.month && dayNum === td);
-      cell.classList.toggle("selected", state.activeDate === date);
-      cell.classList.toggle("holiday", state.holidaySet.has(date));
-    });
-  }
-
-  function renderCalendarGrid() {
-    setHeader();
-    const grid = $("#calGrid");
-    grid.innerHTML = "";
-
-    const y = state.year;
-    const m = state.month;
-
-    const first = new Date(y, m - 1, 1);
-    const firstDow = first.getDay();
-    const lastDay = new Date(y, m, 0).getDate();
-
-    const weeks = computeWeeksInMonth(y, m);
-    const totalCells = weeks * 7;
-
-    grid.style.gridTemplateRows = `repeat(${weeks}, 1fr)`;
-
-    for (let i = 0; i < totalCells; i++) {
-      const cell = document.createElement("div");
-      const dayNum = i - firstDow + 1;
-
-      if (dayNum < 1 || dayNum > lastDay) {
-        cell.className = "day empty";
-        grid.appendChild(cell);
-        continue;
-      }
-
-      const dow = new Date(y, m - 1, dayNum).getDay();
-      cell.className = "day";
-      if (dow === 0) cell.classList.add("sun");
-      if (dow === 6) cell.classList.add("sat");
-      cell.setAttribute("data-day", String(dayNum));
-
-      const top = document.createElement("div");
-      top.className = "day-num";
-      top.textContent = String(dayNum);
-
-      const icons = document.createElement("div");
-      icons.className = "day-dots";
-      icons.setAttribute("data-date", isoDate(y, m, dayNum));
-
-      cell.appendChild(top);
-      cell.appendChild(icons);
-      cell.addEventListener("click", () => onClickDay(dayNum));
-      grid.appendChild(cell);
-    }
-
-    renderIcons();
-    markTodaySelectedHoliday();
-  }
-
-  function getHabitById(habitId) {
-    return state.habits.find((x) => x.id === habitId) || null;
-  }
-
-  function renderIcons() {
-    $$(".day-dots").forEach((el) => {
-      el.className = "day-dots";
-      const date = el.getAttribute("data-date");
-      const ids = state.logsByDate[date] || [];
-      if (!ids.length) { el.innerHTML = ""; return; }
-
-      const uniqIds = Array.from(new Set(ids));
-
-      // ✅ 2줄(3x2) 고정이라 최대 6개까지만 보여줌
-      const shown = uniqIds.slice(0, 6);
-
-      if (shown.length === 1) el.classList.add("single");
-
-      const parts = [];
-      for (const hid of shown) {
-        const h = getHabitById(hid);
-        if (h?.icon_url) {
-          parts.push(`<img class="icon-img" src="${escapeHtml(h.icon_url)}" alt="" />`);
-        } else {
-          const emo = (h?.emoji || "✅").trim() || "✅";
-          parts.push(`<span class="icon-emoji" aria-hidden="true">${escapeHtml(emo)}</span>`);
-        }
-      }
-      el.innerHTML = parts.join("");
-    });
-  }
-
-  // -----------------------------
-  // Supabase CRUD
-  // -----------------------------
-  async function loadHabits() {
-    const { data, error } = await sb
-      .from("habits")
-      .select("id,title,emoji,icon,icon_url,start_date,created_at,is_active")
-      .eq("is_active", true)
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-
-    state.habits = (data || []).map((h) => ({
-      id: h.id,
-      title: h.title,
-      emoji: (h.emoji || h.icon || "✅").trim() || "✅",
-      icon_url: h.icon_url || null,
-      start_date: h.start_date || (h.created_at ? String(h.created_at).slice(0, 10) : null),
-    }));
-  }
-
-  async function loadLogsForMonth() {
-    const [startISO, endISO] = monthRange(state.year, state.month);
-    const { data, error } = await sb
-      .from("habit_logs")
-      .select("check_date,habit_id")
-      .gte("check_date", startISO)
-      .lt("check_date", endISO)
-      .order("check_date", { ascending: true });
-    if (error) throw error;
-
-    const map = {};
-    for (const r of (data || [])) {
-      const d = r.check_date;
-      if (!map[d]) map[d] = [];
-      map[d].push(r.habit_id);
-    }
-    state.logsByDate = map;
-  }
-
-  async function reloadAll() {
-    await ensureHolidays(state.year);
-    await loadHabits();
-    await loadLogsForMonth();
-    renderIcons();
-    markTodaySelectedHoliday();
-  }
-
-  // -----------------------------
-  // Checklist modal
-  // -----------------------------
-  function renderHabitChecklist(date) {
-    const checked = new Set(state.logsByDate[date] || []);
-    const wrap = $("#habitList");
-    wrap.innerHTML = "";
-
-    state.habits.forEach((h) => {
-      const row = document.createElement("label");
-      row.className = "habit-row";
-      row.setAttribute("data-habit-id", h.id);
-
-      const left = document.createElement("div");
-      left.className = "habit-left";
-
-      const iconWrap = document.createElement("span");
-      iconWrap.className = "habit-icon";
-
-      if (h.icon_url) {
-        const img = document.createElement("img");
-        img.src = h.icon_url;
-        img.alt = "";
-        iconWrap.appendChild(img);
-      } else {
-        const emo = document.createElement("span");
-        emo.className = "icon-emoji";
-        emo.textContent = h.emoji;
-        iconWrap.appendChild(emo);
-      }
-
-      const title = document.createElement("span");
-      title.className = "habit-title";
-      title.textContent = h.title;
-
-      left.appendChild(iconWrap);
-      left.appendChild(title);
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = checked.has(h.id);
-
-      row.appendChild(left);
-      row.appendChild(cb);
-      wrap.appendChild(row);
-    });
-  }
-
-  function gatherCheckedHabitIds() {
-    return $$("#habitList .habit-row")
-      .filter((row) => row.querySelector("input[type=checkbox]")?.checked)
-      .map((row) => row.getAttribute("data-habit-id"));
-  }
-
-  async function onClickDay(dayNum) {
-    if (!state.session) return;
-    const date = isoDate(state.year, state.month, dayNum);
-    state.activeDate = date;
-    $("#modalDateTitle").textContent = date;
-    renderHabitChecklist(date);
-    markTodaySelectedHoliday();
-    openModal("#checkModal");
-  }
-
-  async function saveLogsForActiveDate() {
-    if (!state.session || !state.activeDate) return;
-
-    const userId = state.session.user.id;
-    const date = state.activeDate;
-
-    const incoming = new Set(gatherCheckedHabitIds());
-    const existing = new Set(state.logsByDate[date] || []);
-
-    const toDelete = [...existing].filter((x) => !incoming.has(x));
-    const toUpsert = [...incoming];
-
-    if (toDelete.length) {
-      const { error } = await sb
-        .from("habit_logs")
-        .delete()
-        .eq("check_date", date)
-        .eq("user_id", userId)
-        .in("habit_id", toDelete);
-      if (error) throw error;
-    }
-
-    if (toUpsert.length) {
-      const payload = toUpsert.map((hid) => ({ habit_id: hid, check_date: date, user_id: userId }));
-      const { error } = await sb
-        .from("habit_logs")
-        .upsert(payload, { onConflict: "habit_id,check_date" });
-      if (error) throw error;
-    }
-
-    state.logsByDate[date] = [...incoming];
-    renderIcons();
-    markTodaySelectedHoliday();
-    closeAllModals();
-  }
-
-  // -----------------------------
-  // Photo crop/upload (MVP)
-  // -----------------------------
-  function resetHabitPhotoUI() {
-    state.pendingPhotoFile = null;
-    state.pendingPhotoBlob = null;
-    const input = $("#habitPhoto");
-    if (input) input.value = "";
-    $("#habitPhotoPreview").classList.add("hidden");
-    $("#habitPhotoImg").removeAttribute("src");
-  }
-
-  async function centerCropToBlob(file, outSize = 128) {
-    const dataUrl = await new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
-      fr.onerror = () => reject(new Error("file read fail"));
-      fr.readAsDataURL(file);
-    });
-
-    const img = await new Promise((resolve, reject) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = () => reject(new Error("img load fail"));
-      im.src = dataUrl;
-    });
-
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
-    const size = Math.min(w, h);
-    const sx = Math.floor((w - size) / 2);
-    const sy = Math.floor((h - size) / 2);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = outSize;
-    canvas.height = outSize;
-    const ctx = canvas.getContext("2d", { alpha: true });
-
-    ctx.drawImage(img, sx, sy, size, size, 0, 0, outSize, outSize);
-
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.92));
-    if (!blob) throw new Error("blob fail");
-    return blob;
-  }
-
-  async function uploadIconBlob(userId, blob) {
-    // path: userId/yyyyMMddHHmmss-rand.png
-    const now = new Date();
-    const stamp = `${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
-    const rand = Math.random().toString(16).slice(2, 10);
-    const path = `${userId}/${stamp}-${rand}.png`;
-
-    const { error: upErr } = await sb
-      .storage
-      .from(ICON_BUCKET)
-      .upload(path, blob, { contentType: "image/png", upsert: false });
-
-    if (upErr) throw upErr;
-
-    const { data } = sb.storage.from(ICON_BUCKET).getPublicUrl(path);
-    const url = data?.publicUrl;
-    if (!url) throw new Error("public url fail");
-    return url;
-  }
-
-  // -----------------------------
-  // Create Habit
-  // -----------------------------
-  async function createHabit() {
-    if (!state.session) return;
-
-    const userId = state.session.user.id;
-    const title = ($("#habitTitle").value || "").trim();
-    const emoji = ($("#habitIcon").value || "💪").trim() || "💪";
-
-    if (!title) { $("#habitMsg").textContent = "목표 이름부터 써라."; return; }
-
-    let iconUrl = null;
-    if (state.pendingPhotoBlob) {
-      try {
-        iconUrl = await uploadIconBlob(userId, state.pendingPhotoBlob);
-      } catch (e) {
-        console.error(e);
-        $("#habitMsg").textContent = "사진 업로드가 실패했다. 버킷 만들었는지 확인해.";
-        return;
-      }
-    }
-
-    const payload = {
-      user_id: userId,
-      title,
-      emoji,
-      icon: emoji,
-      icon_url: iconUrl,
-      color: state.themeText || "#111111",
-      is_active: true
-    };
-
-    const { error } = await sb.from("habits").insert(payload);
-    if (error) throw error;
-
-    $("#habitTitle").value = "";
-    $("#habitMsg").textContent = "";
-    resetHabitPhotoUI();
-    closeAllModals();
-    await reloadAll();
-  }
-
-  // Month nav
-  async function gotoPrevMonth() {
-    if (state.month === 1) { state.month = 12; state.year -= 1; } else state.month -= 1;
-    await ensureHolidays(state.year);
-    renderCalendarGrid();
-    if (state.session) await reloadAll();
-  }
-  async function gotoNextMonth() {
-    if (state.month === 12) { state.month = 1; state.year += 1; } else state.month += 1;
-    await ensureHolidays(state.year);
-    renderCalendarGrid();
-    if (state.session) await reloadAll();
-  }
-
-  // Bind UI
-  function bindUI() {
-    $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
-
-    $("#btnSaveDay").addEventListener("click", () => {
-      saveLogsForActiveDate().catch((e) => { console.error(e); alert("저장 실패. 콘솔 보자."); });
-    });
-
-    $("#btnCreateHabit").addEventListener("click", () => {
-      createHabit().catch((e) => { console.error(e); alert("목표 추가 실패. 콘솔 보자."); });
-    });
-
-    $("#btnPrev").addEventListener("click", () => gotoPrevMonth().catch((e) => { console.error(e); alert("이동 실패"); }));
-    $("#btnNext").addEventListener("click", () => gotoNextMonth().catch((e) => { console.error(e); alert("이동 실패"); }));
-
-    // 사진 선택
-    $("#habitPhoto").addEventListener("change", async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      state.pendingPhotoFile = file;
-
-      try {
-        const blob = await centerCropToBlob(file, 128);
-        state.pendingPhotoBlob = blob;
-
-        const previewUrl = URL.createObjectURL(blob);
-        $("#habitPhotoImg").src = previewUrl;
-        $("#habitPhotoPreview").classList.remove("hidden");
-      } catch (err) {
-        console.error(err);
-        state.pendingPhotoBlob = null;
-        $("#habitMsg").textContent = "사진 처리 실패. 다른 사진으로 해봐.";
-      }
-    });
-
-    $("#btnClearPhoto").addEventListener("click", () => {
-      resetHabitPhotoUI();
-    });
-  }
-
-  async function afterLogin() {
-    const ok = await ensureAuthedOrShowLogin();
-    if (!ok) return;
-    await ensureHolidays(state.year);
-    renderCalendarGrid();
-    await reloadAll();
-  }
-
-  async function main() {
-    loadTheme();
-    initYearMonth();
-    bindAuthUI();
-    bindSettingsUI();
-    bindUI();
-
-    await ensureHolidays(state.year);
-    renderCalendarGrid();
-
-    const ok = await ensureAuthedOrShowLogin();
-    if (!ok) return;
-    await reloadAll();
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    main().catch((e) => { console.error(e); alert("초기화 실패. 콘솔 보자."); });
-  });
-})();
+}
+
+.cal-header{
+  display:grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items:center;
+  gap: 8px;
+  padding: 6px 2px 10px;
+}
+
+.cal-year{ display:flex; flex-direction: column; gap: 2px; align-items:flex-start; min-width: 60px; }
+.year-label{ font-weight: 900; font-size: 13px; color: var(--muted); }
+
+.cal-nav{ display:flex; align-items:center; justify-content:center; gap: 6px; }
+.month-title{
+  font-family: "Jua", "Nunito", sans-serif;
+  font-size: clamp(30px, 8vw, 40px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  padding: 0 8px;
+  min-width: 140px;
+  text-align:center;
+}
+
+.navchev{
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  font-size: 30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: var(--text);
+}
+.navchev:hover{ background: rgba(0,0,0,0.06); }
+
+.cal-actions{ display:flex; align-items:center; justify-content:flex-end; }
+.settingsbtn{
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 18px;
+}
+.settingsbtn:hover{ background: rgba(0,0,0,0.10); }
+.settingsbtn:active{ transform: scale(0.98); }
+
+.weekdays{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  padding: 8px 2px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 900;
+}
+.weekdays > div{ text-align:center; }
+.weekdays .sun{ color: var(--sun); }
+.weekdays .sat{ color: var(--sat); }
+
+/* Grid: square corners */
+.grid{
+  flex: 1;
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-radius: 0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Cell */
+.day{
+  background:
+    linear-gradient(
+      to bottom,
+      var(--cell-top) 0%,
+      var(--cell-top) 34%,
+      var(--cell-bottom) 34%,
+      var(--cell-bottom) 100%
+    );
+  border-radius: 0;
+  padding: 10px 10px 10px;
+  display:flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+.day.empty{ background: rgba(0,0,0,0.02); }
+
+.day-num{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(0,0,0,0.78);
+  line-height: 1;
+}
+.day.sun .day-num{ color: var(--sun); }
+.day.sat .day-num{ color: var(--sat); }
+.day.holiday .day-num{ color: var(--holiday); }
+
+.day.today{ box-shadow: inset 0 0 0 2px rgba(0,0,0,0.22); }
+.day.selected{ box-shadow: inset 0 0 0 2px rgba(0,0,0,0.14); }
+
+/* Icons area: 2 columns, flow downward */
+.day-dots{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* ✅ 딱 두개 */
+  grid-auto-rows: 1fr;
+  gap: 6px;
+  align-items:center;
+  justify-items:center;
+  align-content:start;
+
+  /* 세로 공간 고정: 3줄(=최대 6개) 정도만 표시 */
+  min-height: 66px;
+  max-height: 66px;
+  overflow:hidden;
+
+  min-width: 0;
+}
+
+/* single icon: bigger */
+.day-dots.single{
+  grid-template-columns: 1fr;
+  min-height: 66px;
+  max-height: 66px;
+}
+
+.icon-emoji{
+  font-size: 22px;
+  line-height: 1;
+}
+.day-dots.single .icon-emoji{ font-size: 36px; }
+
+.icon-img{
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  object-fit: cover;
+  display:block;
+}
+.day-dots.single .icon-img{
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+/* Modals */
+.modal.hidden{ display:none; }
+.modal{ position: fixed; inset:0; z-index: 50; }
+.modal-backdrop{ position:absolute; inset:0; background: rgba(0,0,0,0.42); }
+
+.modal-panel{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%, -50%);
+  width: min(680px, calc(100% - 22px));
+  background: var(--surface);
+  border-radius: 22px;
+  overflow:hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.30);
+  border: 1px solid var(--border);
+}
+
+.modal-header, .modal-footer{
+  padding: 12px 14px;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.modal-header{ border-bottom: 1px solid var(--border); }
+.modal-footer{ border-top: 1px solid var(--border); }
+
+.modal-title{
+  font-family: "Jua", "Nunito", sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+}
+.xbtn{
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.06);
+  font-size: 20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.xbtn:hover{ background: rgba(0,0,0,0.10); }
+
+.modal-body{ padding: 12px 14px; max-height: 66vh; overflow:auto; }
+
+.habit-list{ display:flex; flex-direction: column; gap: 10px; }
+.habit-row{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface2);
+}
+.habit-left{ display:flex; align-items:center; gap: 10px; min-width:0; }
+.habit-title{ font-weight: 900; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.habit_icon{
+  width: 22px; height: 22px;
+  display:flex; align-items:center; justify-content:center;
+}
+.habit-icon img{ width: 22px; height: 22px; border-radius: 8px; object-fit: cover; }
+.habit_icon .icon-emoji{ font-size: 20px; }
+
+.progress-list{ display:flex; flex-direction: column; gap: 10px; }
+.progress-row{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface2);
+}
+.progress-left{ display:flex; align-items:center; gap: 10px; min-width:0; }
+.progress-title{ font-weight: 900; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.progress-right{ text-align:right; }
+.progress-count{ font-weight: 900; font-size: 14px; }
+.progress-sub{ font-size: 12px; color: var(--muted); }
+
+.photo-preview{
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface2);
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.photo-preview img{
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  object-fit: cover;
+  display:block;
+}
+
+.setting-email{ display:flex; flex-direction: column; gap: 4px; }
+.setting-email-label{ font-size: 12px; color: var(--muted); font-weight: 900; }
+.setting-email-value{ font-size: 14px; font-weight: 900; word-break: break-all; }
+
+.setting-row{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+}
+.setting-label{ font-weight: 900; font-size: 14px; }
+.colorpick{
+  width: 56px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 0;
+}
+.setting-actions{
+  display:flex;
+  justify-content:flex-end;
+  padding-top: 6px;
+}
+.divider{
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
