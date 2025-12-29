@@ -1,4 +1,8 @@
-/* Plan Calendar v9 - square corners + 2-row icons + photo preview */
+/* Plan Calendar v10
+   - day cell corners: square
+   - icons: 2 columns, flow down (max 6 shown)
+   - prevent horizontal widening/overflow
+*/
 :root{
   --bg: #f6f7fb;
   --text: #111111;
@@ -33,10 +37,7 @@ body{
 }
 
 .hidden{ display:none !important; }
-
 .container{ width: 100%; max-width: 100%; margin: 0; padding: 0; }
-
-#loginCard.card{ margin: 14px 12px 18px; }
 
 .card{
   background: var(--surface);
@@ -45,6 +46,8 @@ body{
   box-shadow: var(--shadow);
   padding: 16px;
 }
+
+#loginCard.card{ margin: 14px 12px 18px; }
 
 .login-title{
   font-family: "Jua", "Nunito", sans-serif;
@@ -62,6 +65,7 @@ body{
 }
 .field input, .field select{
   width:100%;
+  max-width: 100%;
   padding: 12px 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -81,7 +85,6 @@ body{
 }
 @media (max-width: 420px){ .login-actions{ flex-direction: column; } }
 
-/* Buttons */
 button{
   border: none;
   background: transparent;
@@ -90,6 +93,7 @@ button{
   font-family: inherit;
   -webkit-tap-highlight-color: transparent;
 }
+
 .primary{
   background: var(--text);
   color: var(--surface);
@@ -118,7 +122,7 @@ button{
   font-weight: 900;
 }
 
-/* Calendar shell fills viewport */
+/* Calendar fills viewport */
 #appShell .calendar-shell{
   height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   background: var(--surface);
@@ -131,6 +135,7 @@ button{
   padding: 12px 12px 14px;
   display:flex;
   flex-direction: column;
+  overflow-x: hidden; /* ✅ 좌우 튀어나오는거 방지 */
 }
 
 @media (min-width: 768px){
@@ -143,7 +148,6 @@ button{
   }
 }
 
-/* Header */
 .cal-header{
   display:grid;
   grid-template-columns: 1fr auto 1fr;
@@ -179,8 +183,6 @@ button{
 .navchev:hover{ background: rgba(0,0,0,0.06); }
 
 .cal-actions{ display:flex; align-items:center; justify-content:flex-end; }
-
-/* Settings btn: flat, subtle */
 .settingsbtn{
   width: 40px;
   height: 40px;
@@ -208,18 +210,19 @@ button{
 .weekdays .sun{ color: var(--sun); }
 .weekdays .sat{ color: var(--sat); }
 
-/* Grid: SQUARE corners */
+/* Grid: square corners */
 .grid{
   flex: 1;
   display:grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px;
   background: var(--border);
-  border-radius: 0;        /* ✅ 각지게 */
+  border-radius: 0;
   overflow: hidden;
+  min-width: 0;
 }
 
-/* Cells */
+/* Cell */
 .day{
   background:
     linear-gradient(
@@ -229,16 +232,16 @@ button{
       var(--cell-bottom) 34%,
       var(--cell-bottom) 100%
     );
-  border: none;
-  border-radius: 0;        /* ✅ 각지게 */
+  border-radius: 0;
   padding: 10px 10px 10px;
   display:flex;
   flex-direction: column;
   justify-content: space-between;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
   touch-action: manipulation;
 }
-
 .day.empty{ background: rgba(0,0,0,0.02); }
 
 .day-num{
@@ -257,45 +260,47 @@ button{
 .day.today{ box-shadow: inset 0 0 0 2px rgba(0,0,0,0.22); }
 .day.selected{ box-shadow: inset 0 0 0 2px rgba(0,0,0,0.14); }
 
-/* Icons area */
+/* Icons area: 2 columns, flow downward */
 .day-dots{
-  /* ✅ 2줄 고정 그리드: 3열 x 2행 */
   display:grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* ✅ 딱 두개 */
   grid-auto-rows: 1fr;
   gap: 6px;
   align-items:center;
   justify-items:center;
   align-content:start;
-  min-height: 58px;
-  max-height: 58px;
+
+  /* 세로 공간 고정: 3줄(=최대 6개) 정도만 표시 */
+  min-height: 66px;
+  max-height: 66px;
   overflow:hidden;
+
+  min-width: 0;
 }
 
-/* single icon: center and bigger */
+/* single icon: bigger */
 .day-dots.single{
   grid-template-columns: 1fr;
-  min-height: 58px;
-  max-height: 58px;
+  min-height: 66px;
+  max-height: 66px;
 }
 
 .icon-emoji{
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
 }
-
-.day-dots.single .icon-emoji{ font-size: 34px; }
+.day-dots.single .icon-emoji{ font-size: 36px; }
 
 .icon-img{
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 8px;
   object-fit: cover;
   display:block;
 }
 .day-dots.single .icon-img{
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
 }
 
@@ -346,7 +351,6 @@ button{
 
 .modal-body{ padding: 12px 14px; max-height: 66vh; overflow:auto; }
 
-/* Checklist */
 .habit-list{ display:flex; flex-direction: column; gap: 10px; }
 .habit-row{
   display:flex;
@@ -358,19 +362,16 @@ button{
   border-radius: 16px;
   background: var(--surface2);
 }
-.habit-left{ display:flex; align-items:center; gap: 10px; }
-.habit-title{ font-weight: 900; font-size: 14px; }
+.habit-left{ display:flex; align-items:center; gap: 10px; min-width:0; }
+.habit-title{ font-weight: 900; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .habit-icon{
   width: 22px; height: 22px;
   display:flex; align-items:center; justify-content:center;
 }
-.habit-icon img{
-  width: 22px; height: 22px; border-radius: 8px; object-fit: cover;
-}
+.habit-icon img{ width: 22px; height: 22px; border-radius: 8px; object-fit: cover; }
 .habit-icon .icon-emoji{ font-size: 20px; }
 
-/* Progress */
 .progress-list{ display:flex; flex-direction: column; gap: 10px; }
 .progress-row{
   display:flex;
@@ -382,13 +383,12 @@ button{
   border-radius: 16px;
   background: var(--surface2);
 }
-.progress-left{ display:flex; align-items:center; gap: 10px; }
-.progress-title{ font-weight: 900; font-size: 14px; }
+.progress-left{ display:flex; align-items:center; gap: 10px; min-width:0; }
+.progress-title{ font-weight: 900; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .progress-right{ text-align:right; }
 .progress-count{ font-weight: 900; font-size: 14px; }
 .progress-sub{ font-size: 12px; color: var(--muted); }
 
-/* Photo preview */
 .photo-preview{
   margin-top: 10px;
   padding: 12px;
@@ -408,7 +408,6 @@ button{
   display:block;
 }
 
-/* Settings */
 .setting-email{ display:flex; flex-direction: column; gap: 4px; }
 .setting-email-label{ font-size: 12px; color: var(--muted); font-weight: 900; }
 .setting-email-value{ font-size: 14px; font-weight: 900; word-break: break-all; }
