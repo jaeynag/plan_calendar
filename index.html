@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="static/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- ⚠️ 너 anon key는 이미 공개키(publishable)라 괜찮지만, service_role은 절대 올리면 안 됨 -->
   <script>
     window.__SUPABASE_URL__ = "https://xotldfursmoxnmytdemx.supabase.co";
     window.__SUPABASE_ANON_KEY__ = "sb_publishable_VyoL59Ap96ZAu5vOo9Z6OA_G0aqfeaG";
@@ -37,7 +36,7 @@
 
       <div class="login-actions">
         <button id="btnSignIn" class="primary" type="button">로그인</button>
-        <button id="btnSignUp" type="button">회원가입</button>
+        <button id="btnSignUp" class="ghostbtn" type="button">회원가입</button>
       </div>
 
       <div id="msg" class="hint"></div>
@@ -54,13 +53,13 @@
 
           <div class="cal-nav">
             <button id="btnPrev" class="iconbtn" type="button" aria-label="이전 달">‹</button>
-            <div id="ymTitle" class="month-title">12</div>
+            <div id="ymTitle" class="month-title">12월</div>
             <button id="btnNext" class="iconbtn" type="button" aria-label="다음 달">›</button>
           </div>
 
           <div class="cal-actions">
             <button id="btnAddHabit" class="pillbtn" type="button">목표추가</button>
-            <button id="btnLogout" class="ghostbtn" type="button" aria-label="로그아웃">로그아웃</button>
+            <button id="btnSettings" class="iconbtn" type="button" aria-label="설정">⚙</button>
           </div>
         </div>
 
@@ -162,6 +161,39 @@
       <div class="modal-footer">
         <button class="ghostbtn" data-close="1" type="button">취소</button>
         <button id="btnCreateHabit" class="primary" type="button">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 설정 모달 -->
+  <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">설정</div>
+        <button class="xbtn" data-close="1" type="button">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-row">
+          <div class="setting-label">배경색</div>
+          <input id="themeBg" class="colorpick" type="color" value="#f6f7fb" />
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label">글자색</div>
+          <input id="themeText" class="colorpick" type="color" value="#111111" />
+        </div>
+
+        <div class="setting-actions">
+          <button id="btnThemeReset" class="ghostbtn" type="button">기본값</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <button id="btnLogout" class="dangerbtn" type="button">로그아웃</button>
+      </div>
+      <div class="modal-footer">
+        <button class="ghostbtn" data-close="1" type="button">닫기</button>
       </div>
     </div>
   </div>
