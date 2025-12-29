@@ -144,8 +144,14 @@
     hide(loginCard);
     show(appShell);
 
-    const email = sess.user?.email || "";
-    $("#userBadge").textContent = email ? email : "";
+    // ✅ 헤더에는 메일 안 보이게 유지
+    $("#userBadge").textContent = "";
+
+    // ✅ 설정 모달용 메일 업데이트
+    const email = sess.user?.email || "-";
+    const emailEl = $("#settingsEmail");
+    if (emailEl) emailEl.textContent = email;
+
     return true;
   }
 
@@ -216,12 +222,20 @@
   // Settings UI
   // -----------------------------
   function bindSettingsUI() {
-    $("#btnSettings").addEventListener("click", () => {
-      // populate pickers with current theme
-      $("#themeBg").value = state.themeBg || THEME_DEFAULT_BG;
-      $("#themeText").value = state.themeText || THEME_DEFAULT_TEXT;
-      openModal("#settingsModal");
-    });
+    const btnSettings = $("#btnSettings");
+    if (btnSettings) {
+      btnSettings.addEventListener("click", async () => {
+        // ✅ 혹시 세션 갱신이 필요하면 여기서 한번 보강
+        await refreshSession();
+        const email = state.session?.user?.email || "-";
+        const emailEl = $("#settingsEmail");
+        if (emailEl) emailEl.textContent = email;
+
+        $("#themeBg").value = state.themeBg || THEME_DEFAULT_BG;
+        $("#themeText").value = state.themeText || THEME_DEFAULT_TEXT;
+        openModal("#settingsModal");
+      });
+    }
 
     $("#themeBg").addEventListener("input", (e) => {
       const v = e.target.value;
@@ -237,6 +251,14 @@
       applyTheme(THEME_DEFAULT_BG, THEME_DEFAULT_TEXT);
       $("#themeBg").value = THEME_DEFAULT_BG;
       $("#themeText").value = THEME_DEFAULT_TEXT;
+    });
+
+    // ✅ 목표 추가는 설정에서
+    $("#btnOpenHabit").addEventListener("click", () => {
+      closeAllModals();
+      $("#habitMsg").textContent = "";
+      openModal("#habitModal");
+      setTimeout(() => $("#habitTitle")?.focus(), 0);
     });
 
     $("#btnLogout").addEventListener("click", async () => {
@@ -567,12 +589,6 @@
       });
     });
 
-    $("#btnAddHabit").addEventListener("click", () => {
-      $("#habitMsg").textContent = "";
-      openModal("#habitModal");
-      setTimeout(() => $("#habitTitle")?.focus(), 0);
-    });
-
     $("#btnCreateHabit").addEventListener("click", () => {
       createHabit().catch((e) => {
         console.error(e);
@@ -602,7 +618,7 @@
   // Boot
   // -----------------------------
   async function main() {
-    loadTheme();        // ✅ 로그인 전에도 테마 적용
+    loadTheme();        // 테마는 로그인 전에도 적용
     initYearMonth();
     bindAuthUI();
     bindSettingsUI();
