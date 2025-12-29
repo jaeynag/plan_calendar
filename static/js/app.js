@@ -27,7 +27,7 @@
     themeText: THEME_DEFAULT_TEXT,
   };
 
-  // ---------- HTML escape (v5 누락 버그 픽스) ----------
+  // ---------- HTML escape ----------
   function escapeHtml(s) {
     return String(s)
       .replaceAll("&", "&amp;")
@@ -37,23 +37,37 @@
       .replaceAll("'", "&#39;");
   }
 
+  // ---------- date utils ----------
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const isoDate = (y,m,d) => `${y}-${pad2(m)}-${pad2(d)}`;
+
+  function toDateOnlyStr(d) {
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const dd = d.getDate();
+    return isoDate(y, m, dd);
+  }
+  function parseYmd(ymd) {
+    const [y,m,d] = String(ymd).split("-").map((x) => parseInt(x, 10));
+    return new Date(y, (m||1) - 1, d||1);
+  }
+  function daysInclusive(startYmd, endYmd) {
+    const a = parseYmd(startYmd);
+    const b = parseYmd(endYmd);
+    const ms = 24 * 60 * 60 * 1000;
+    const diff = Math.floor((b.getTime() - a.getTime()) / ms);
+    return Math.max(1, diff + 1);
+  }
+
   // ---------- color utils ----------
   function clamp01(x){ return Math.min(1, Math.max(0, x)); }
   function hexToRgb(hex){
     const h = String(hex || "").replace("#","").trim();
     if (h.length === 3){
-      return {
-        r: parseInt(h[0]+h[0], 16),
-        g: parseInt(h[1]+h[1], 16),
-        b: parseInt(h[2]+h[2], 16),
-      };
+      return { r: parseInt(h[0]+h[0],16), g: parseInt(h[1]+h[1],16), b: parseInt(h[2]+h[2],16) };
     }
     if (h.length === 6){
-      return {
-        r: parseInt(h.slice(0,2), 16),
-        g: parseInt(h.slice(2,4), 16),
-        b: parseInt(h.slice(4,6), 16),
-      };
+      return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) };
     }
     return {r:17,g:17,b:17};
   }
@@ -79,7 +93,7 @@
   }
 
   // -----------------------------
-  // Theme (apply to whole UI)
+  // Theme
   // -----------------------------
   function applyTheme(bgHex, textHex) {
     const bg = (bgHex || THEME_DEFAULT_BG).trim();
@@ -94,20 +108,16 @@
 
     const white = {r:255,g:255,b:255};
 
-    // surfaces from bg
     const surface = mix(bgRgb, white, isDarkBg ? 0.10 : 0.35);
     const surface2 = mix(bgRgb, white, isDarkBg ? 0.06 : 0.22);
 
-    // split cell tones
     const cellTop = mix(surface, textRgb, isDarkBg ? 0.10 : 0.06);
     const cellBottom = mix(surface, bgRgb, isDarkBg ? 0.25 : 0.35);
 
-    // borders / muted from text
     const border = rgba(textRgb, isDarkBg ? 0.18 : 0.10);
     const border2 = rgba(textRgb, isDarkBg ? 0.26 : 0.16);
     const muted = rgba(textRgb, isDarkBg ? 0.72 : 0.55);
     const gear = rgba(textRgb, isDarkBg ? 0.86 : 0.72);
-
     const shadow = isDarkBg ? "0 10px 26px rgba(0,0,0,0.35)" : "0 8px 22px rgba(0,0,0,0.06)";
 
     const root = document.documentElement;
@@ -142,7 +152,7 @@
   }
 
   // -----------------------------
-  // Holidays (KR) - best effort
+  // Holidays (KR)
   // -----------------------------
   async function ensureHolidays(year) {
     if (state.holidayYearLoaded === year && state.holidaySet.size) return;
@@ -196,10 +206,7 @@
     loginCard.classList.add("hidden");
     appShell.classList.remove("hidden");
 
-    const email = sess.user?.email || "-";
-    const emailEl = $("#settingsEmail");
-    if (emailEl) emailEl.textContent = email;
-
+    $("#settingsEmail").textContent = sess.user?.email || "-";
     return true;
   }
 
@@ -286,6 +293,11 @@
       setTimeout(() => $("#habitTitle")?.focus(), 0);
     });
 
+    $("#btnOpenProgress").addEventListener("click", async () => {
+      closeAllModals();
+      await openProgress();
+    });
+
     $("#btnLogout").addEventListener("click", async () => {
       await sb.auth.signOut();
       closeAllModals();
@@ -294,16 +306,120 @@
   }
 
   // -----------------------------
-  // Calendar render
+  // Progress
+  // -----------------------------
+  async function openProgress() {
+    $("#progressMsg").textContent = "";
+    $("#progressList").innerHTML = "";
+
+    if (!state.session) {
+      $("#progressMsg").textContent = "로그인부터 해.";
+      openModal("#progressModal");
+      return;
+    }
+
+    try {
+      // Load habits with start_date if exists
+      const { data: habits, error: he } = await sb
+        .from("habits")
+        .select("id,title,emoji,icon,start_date,created_at,is_active")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
+      if (he) throw he;
+
+      const list = (habits || []).map((h) => ({
+        id: h.id,
+        title: h.title,
+        emoji: (h.emoji || h.icon || "✅").trim() || "✅",
+        start_date: h.start_date || (h.created_at ? String(h.created_at).slice(0, 10) : null),
+      }));
+
+      if (!list.length) {
+        $("#progressMsg").textContent = "목표가 없다. 목표부터 추가해.";
+        openModal("#progressModal");
+        return;
+      }
+
+      const today = toDateOnlyStr(new Date());
+      const minStart = list
+        .map((h) => h.start_date)
+        .filter(Boolean)
+        .sort()[0] || today;
+
+      // Fetch logs from earliest start to today (limit scope)
+      const { data: logs, error: le } = await sb
+        .from("habit_logs")
+        .select("habit_id,check_date")
+        .gte("check_date", minStart)
+        .lte("check_date", today);
+      if (le) throw le;
+
+      const counts = new Map();
+      for (const r of (logs || [])) {
+        const hid = r.habit_id;
+        counts.set(hid, (counts.get(hid) || 0) + 1);
+      }
+
+      const wrap = $("#progressList");
+      wrap.innerHTML = "";
+      for (const h of list) {
+        const start = h.start_date || today;
+        const totalDays = daysInclusive(start, today);
+        const done = counts.get(h.id) || 0;
+
+        const row = document.createElement("div");
+        row.className = "progress-row";
+
+        const left = document.createElement("div");
+        left.className = "progress-left";
+
+        const emo = document.createElement("div");
+        emo.className = "progress-emoji";
+        emo.textContent = h.emoji;
+
+        const title = document.createElement("div");
+        title.className = "progress-title";
+        title.textContent = h.title;
+
+        left.appendChild(emo);
+        left.appendChild(title);
+
+        const right = document.createElement("div");
+        right.className = "progress-right";
+
+        const count = document.createElement("div");
+        count.className = "progress-count";
+        count.textContent = `${done} / ${totalDays}`;
+
+        const sub = document.createElement("div");
+        sub.className = "progress-sub";
+        sub.textContent = `${start} ~ ${today}`;
+
+        right.appendChild(count);
+        right.appendChild(sub);
+
+        row.appendChild(left);
+        row.appendChild(right);
+
+        wrap.appendChild(row);
+      }
+
+      openModal("#progressModal");
+    } catch (e) {
+      console.error(e);
+      $("#progressMsg").textContent = "진행상황 불러오다 터졌다. 콘솔 봐.";
+      openModal("#progressModal");
+    }
+  }
+
+  // -----------------------------
+  // Calendar
   // -----------------------------
   function initYearMonth() {
     const now = new Date();
     state.year = now.getFullYear();
     state.month = now.getMonth() + 1;
   }
-
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const isoDate = (y,m,d) => `${y}-${pad2(m)}-${pad2(d)}`;
 
   function monthRange(y, m) {
     const start = `${y}-${pad2(m)}-01`;
@@ -314,6 +430,14 @@
   function setHeader() {
     $("#yearLabel").textContent = String(state.year);
     $("#ymTitle").textContent = `${state.month}월`;
+  }
+
+  function computeWeeksInMonth(y, m) {
+    const first = new Date(y, m - 1, 1);
+    const firstDow = first.getDay();
+    const lastDay = new Date(y, m, 0).getDate();
+    const cells = firstDow + lastDay;
+    return Math.ceil(cells / 7); // 4~6
   }
 
   function markTodaySelectedHoliday() {
@@ -344,7 +468,13 @@
     const firstDow = first.getDay();
     const lastDay = new Date(y, m, 0).getDate();
 
-    for (let i = 0; i < 42; i++) {
+    const weeks = computeWeeksInMonth(y, m);
+    const totalCells = weeks * 7;
+
+    // ✅ 마지막 "빈 주" 없애기: grid rows를 필요한 주만큼만
+    grid.style.gridTemplateRows = `repeat(${weeks}, 1fr)`;
+
+    for (let i = 0; i < totalCells; i++) {
       const cell = document.createElement("div");
       const dayNum = i - firstDow + 1;
 
