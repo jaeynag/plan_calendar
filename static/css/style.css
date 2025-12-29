@@ -1,15 +1,14 @@
-/* Plan Calendar - themed surfaces + subtle split cell */
-/* Defaults (will be overridden by JS theme vars) */
+/* Plan Calendar - tighter grid + split cell */
+/* Defaults (JS overwrites derived vars) */
 :root{
-  /* user-controlled */
   --bg: #f6f7fb;
   --text: #111111;
 
-  /* derived (JS writes these) */
-  --surface: #ffffff;        /* card/shell background */
-  --surface2: #f3f4f6;       /* secondary surfaces */
-  --cell-top: #ffffff;       /* date area */
-  --cell-bottom: #f7f8fb;    /* content/emoji area */
+  --surface: #ffffff;
+  --surface2: #f3f4f6;
+  --cell-top: #ffffff;
+  --cell-bottom: #f7f8fb;
+
   --border: rgba(17,17,17,0.08);
   --border2: rgba(17,17,17,0.12);
   --muted: rgba(17,17,17,0.55);
@@ -18,6 +17,7 @@
   --sun: #e11d48;
   --sat: #2563eb;
   --holiday: #dc2626;
+  --gear: rgba(0,0,0,0.72);
 }
 
 *{ box-sizing: border-box; }
@@ -77,9 +77,7 @@ body{
   background: var(--surface);
   color: var(--text);
 }
-.field input:focus, .field select:focus{
-  border-color: var(--border2);
-}
+.field input:focus, .field select:focus{ border-color: var(--border2); }
 
 .hint{ font-size: 12px; color: var(--muted); margin-top: 8px; }
 
@@ -135,7 +133,7 @@ button{
   border: 1px solid var(--border);
   border-radius: 22px;
   box-shadow: var(--shadow);
-  padding: 12px;
+  padding: 10px; /* 조금 줄임 */
 }
 
 .cal-header{
@@ -176,7 +174,7 @@ button{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap: 4px;
+  gap: 2px;
 }
 .month-title{
   font-family: "Jua", "Nunito", sans-serif;
@@ -189,8 +187,8 @@ button{
 }
 
 .navchev{
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 12px;
   font-size: 28px;
   display:flex;
@@ -208,8 +206,8 @@ button{
 
 /* Settings button */
 .settingsbtn{
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 12px;
   background: rgba(0,0,0,0.06);
   border: 1px solid rgba(0,0,0,0.04);
@@ -222,15 +220,15 @@ button{
 .gearicon{
   width: 18px;
   height: 18px;
-  fill: rgba(0,0,0,0.72);
+  fill: var(--gear);
 }
 
-/* Weekdays */
+/* Weekdays (gap 줄여서 '선' 느낌) */
 .weekdays{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: clamp(6px, 1.8vw, 10px);
-  padding: 6px 4px 12px;
+  gap: 1px;
+  padding: 6px 2px 10px;
   font-size: 12px;
   color: var(--muted);
   font-weight: 800;
@@ -239,44 +237,42 @@ button{
 .weekdays .sun{ color: var(--sun); }
 .weekdays .sat{ color: var(--sat); }
 
-/* Calendar grid */
+/* Calendar grid: gap 거의 1px로 */
 .grid{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: clamp(6px, 1.8vw, 10px);
+  gap: 1px; /* ✅ 여기 핵심 */
+  background: var(--border); /* gap이 선처럼 보이게 */
+  border-radius: 16px;
+  overflow: hidden; /* 선 라운딩 유지 */
 }
 
-/* Subtle split: date area a bit "denser", bottom a bit "airier" */
+/* Day cell: 둥글기 줄이고, 패딩 줄이고, 날짜 영역(top) 더 작게 */
 .day{
-  background: linear-gradient(
-    to bottom,
-    var(--cell-top) 0%,
-    var(--cell-top) 52%,
-    var(--cell-bottom) 52%,
-    var(--cell-bottom) 100%
-  );
-  border: 1px solid rgba(0,0,0,0.07);
-  border-color: var(--border);
-  border-radius: 18px;
-  min-height: clamp(76px, 12.5vw, 102px);
-  padding: clamp(8px, 2.2vw, 12px);
+  background:
+    linear-gradient(
+      to bottom,
+      var(--cell-top) 0%,
+      var(--cell-top) 38%,     /* ✅ 날짜 영역 더 얇게 */
+      var(--cell-bottom) 38%,
+      var(--cell-bottom) 100%
+    );
+  border: none;              /* grid 배경이 선 역할 */
+  border-radius: 0;          /* 격자감 유지 */
+  min-height: clamp(70px, 11.5vw, 92px);
+  padding: 8px 8px;          /* ✅ 여백 줄임 */
   display:flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition: box-shadow 0.12s ease, background 0.12s ease;
   touch-action: manipulation;
 }
 
-.day:hover{
-  box-shadow: 0 10px 22px rgba(0,0,0,0.07);
-  border-color: var(--border2);
-}
-.day:active{ transform: scale(0.985); }
+.day:hover{ box-shadow: inset 0 0 0 999px rgba(0,0,0,0.015); }
+.day:active{ transform: scale(0.99); }
 
 .day.empty{
   background: rgba(0,0,0,0.02);
-  border-style: dashed;
-  box-shadow: none;
 }
 
 .day-num{
@@ -286,27 +282,27 @@ button{
   font-size: 11px;
   font-weight: 900;
   color: rgba(0,0,0,0.72);
+  line-height: 1;
 }
 .day.sun .day-num{ color: var(--sun); }
 .day.sat .day-num{ color: var(--sat); }
 .day.holiday .day-num{ color: var(--holiday); }
 
+/* today/selected는 테두리 대신 overlay로 */
 .day.today{
-  border-color: rgba(0,0,0,0.25);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.22);
 }
 .day.selected{
-  border-color: rgba(0,0,0,0.22);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.03);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.16);
 }
 
 /* Emoji area */
 .day-dots{
   display:flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 2px;
   align-items:flex-end;
-  min-height: 30px;
+  min-height: 26px;
   overflow:hidden;
 }
 .day-dots .e{
@@ -320,15 +316,15 @@ button{
 .day-dots.emoji-count-1{
   justify-content:center;
   align-items:center;
-  min-height: 46px;
+  min-height: 40px;
 }
-.day-dots.emoji-count-1 .e{ font-size: 34px; }
-.day-dots.emoji-count-2 .e{ font-size: 24px; }
-.day-dots.emoji-count-3 .e{ font-size: 22px; }
-.day-dots.emoji-count-4 .e{ font-size: 19px; }
-.day-dots.emoji-count-5 .e{ font-size: 17px; }
-.day-dots.emoji-count-6 .e{ font-size: 16px; }
-.day-dots.emoji-count-7 .e{ font-size: 15px; }
+.day-dots.emoji-count-1 .e{ font-size: 32px; }
+.day-dots.emoji-count-2 .e{ font-size: 22px; }
+.day-dots.emoji-count-3 .e{ font-size: 20px; }
+.day-dots.emoji-count-4 .e{ font-size: 18px; }
+.day-dots.emoji-count-5 .e{ font-size: 16px; }
+.day-dots.emoji-count-6 .e{ font-size: 15px; }
+.day-dots.emoji-count-7 .e{ font-size: 14px; }
 .day-dots.emoji-count-8 .e,
 .day-dots.emoji-count-9 .e,
 .day-dots.emoji-count-10 .e,
@@ -336,7 +332,7 @@ button{
 .day-dots.emoji-count-12 .e,
 .day-dots.emoji-count-13 .e,
 .day-dots.emoji-count-14 .e,
-.day-dots.emoji-count-15 .e{ font-size: 14px; }
+.day-dots.emoji-count-15 .e{ font-size: 13px; }
 
 /* Modal */
 .modal.hidden{ display:none; }
