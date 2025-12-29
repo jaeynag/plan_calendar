@@ -4,12 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Plan Calendar</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="static/css/style.css" />
+<link rel="stylesheet" href="static/css/style.css?v=14" />
 
   <!-- Cropper.js (client-side crop/rotate/zoom) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
@@ -172,7 +167,14 @@
           사진은 네가 원하는 위치로 크롭/회전/확대 가능하게 해놨어.
         </div>
 
-        <div id="habitMsg" class="hint"></div>
+        
+        <div class="divider"></div>
+
+        <div class="subttl">등록된 목표</div>
+        <div id="habitManageList" class="habit-manage-list"></div>
+        <div class="hint">삭제하면 그 목표의 체크 기록도 같이 날아간다.</div>
+
+<div id="habitMsg" class="hint"></div>
       </div>
       <div class="modal-footer">
         <button class="ghostbtn" data-close="1" type="button">취소</button>
@@ -284,6 +286,6 @@
     </div>
   </div>
 
-  <script src="static/js/app.js"></script>
+  <script src="static/js/app.js?v=14"></script>
 </body>
 </html>
