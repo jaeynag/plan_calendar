@@ -1,21 +1,19 @@
-/* Plan Calendar - mobile-first, clean UI */
-/* Fonts: Nunito + Jua (best-effort), fallback to system */
+/* Plan Calendar - mobile-first, cleaner UI */
+/* Fonts: Nunito + Jua (best-effort) */
 :root{
   --bg: #f6f7fb;
   --card: #ffffff;
   --text: #111111;
   --muted: #6b7280;
-  --border: rgba(17,17,17,0.10);
-  --shadow: 0 10px 30px rgba(0,0,0,0.08);
+
+  /* softer borders/shadows (less '촌스러움') */
+  --border: rgba(17,17,17,0.08);
+  --border2: rgba(17,17,17,0.12);
+  --shadow: 0 8px 22px rgba(0,0,0,0.06);
+
   --sun: #e11d48;  /* red */
   --sat: #2563eb;  /* blue */
   --holiday: #dc2626;
-}
-
-/* Safe area */
-body{
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
 }
 
 *{ box-sizing: border-box; }
@@ -27,6 +25,8 @@ body{
   font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "맑은 고딕", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
 }
 
 .hidden{ display:none !important; }
@@ -72,7 +72,7 @@ body{
   background: #fff;
 }
 .field input:focus, .field select:focus{
-  border-color: rgba(17,17,17,0.35);
+  border-color: rgba(17,17,17,0.32);
 }
 
 .hint{ font-size: 12px; color: var(--muted); margin-top: 8px; }
@@ -93,6 +93,7 @@ button{
   color: inherit;
   cursor: pointer;
   font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 .primary{
   background: #111;
@@ -111,29 +112,7 @@ button{
 }
 .ghostbtn:hover{ background: rgba(17,17,17,0.10); }
 
-.pillbtn{
-  background: rgba(17,17,17,0.08);
-  padding: 10px 12px;
-  border-radius: 999px;
-  font-weight: 900;
-  font-size: 13px;
-  white-space: nowrap;
-}
-.pillbtn:hover{ background: rgba(17,17,17,0.12); }
-
-.iconbtn{
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  background: transparent;
-  font-size: 28px;
-  line-height: 1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color: var(--text);
-}
-.iconbtn:hover{ background: rgba(17,17,17,0.06); }
+.fullbtn{ width: 100%; }
 
 .dangerbtn{
   width: 100%;
@@ -145,7 +124,7 @@ button{
 }
 .dangerbtn:hover{ background: rgba(225,29,72,0.14); }
 
-/* Calendar */
+/* Calendar shell */
 .calendar-shell{
   background: var(--card);
   border: 1px solid var(--border);
@@ -161,8 +140,9 @@ button{
   gap: 8px;
   padding: 6px 4px 10px;
 }
+
+/* ✅ 초소형 폰에서 깨짐 방지: 2줄로 */
 @media (max-width: 380px){
-  /* ✅ 초소형 폰에서 깨짐 방지: 2줄로 */
   .cal-header{
     grid-template-columns: 1fr auto;
     grid-template-areas:
@@ -178,9 +158,9 @@ button{
 .cal-year{
   display:flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   align-items:flex-start;
-  min-width: 92px;
+  min-width: 60px;
 }
 .year-label{
   font-weight: 900;
@@ -194,12 +174,14 @@ button{
   word-break: break-all;
 }
 
+/* Month nav */
 .cal-nav{
   display:flex;
   align-items:center;
   justify-content:center;
   gap: 4px;
 }
+
 .month-title{
   font-family: "Jua", "Nunito", sans-serif;
   font-size: clamp(26px, 7vw, 32px);
@@ -210,13 +192,45 @@ button{
   text-align:center;
 }
 
+.navchev{
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 28px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: var(--text);
+}
+.navchev:hover{ background: rgba(17,17,17,0.06); }
+
+/* Actions */
 .cal-actions{
   display:flex;
   align-items:center;
   justify-content:flex-end;
-  gap: 8px;
 }
 
+/* ✅ 설정 버튼: 작은 2D, 배경에 녹아드는 느낌 */
+.settingsbtn{
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(17,17,17,0.06);
+  border: 1px solid rgba(17,17,17,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.settingsbtn:hover{ background: rgba(17,17,17,0.10); }
+.settingsbtn:active{ transform: scale(0.98); }
+.gearicon{
+  width: 18px;
+  height: 18px;
+  fill: rgba(17,17,17,0.75);
+}
+
+/* Weekdays */
 .weekdays{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
@@ -237,34 +251,33 @@ button{
   gap: clamp(6px, 1.8vw, 10px);
 }
 
-/* ✅ 모바일에서 너무 작아 보이는 문제: min-height / padding을 반응형으로 */
 .day{
-  background: #fff;
-  border: 1px solid rgba(17,17,17,0.08);
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(17,17,17,0.07);
   border-radius: 18px;
   min-height: clamp(76px, 12.5vw, 102px);
   padding: clamp(8px, 2.2vw, 12px);
   display:flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: transform 0.08s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
   touch-action: manipulation;
 }
 .day:hover{
-  box-shadow: 0 10px 24px rgba(0,0,0,0.08);
-  border-color: rgba(17,17,17,0.18);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.07);
+  border-color: rgba(17,17,17,0.14);
 }
 .day:active{ transform: scale(0.985); }
 
 .day.empty{
-  background: rgba(17,17,17,0.03);
+  background: rgba(17,17,17,0.02);
   border-style: dashed;
   box-shadow: none;
 }
 
 .day-num{
   display:flex;
-  justify-content:flex-end;   /* ✅ 우상단 */
+  justify-content:flex-end;   /* 우상단 */
   align-items:center;
   font-size: 11px;
   font-weight: 900;
@@ -276,13 +289,12 @@ button{
 .day.holiday .day-num{ color: var(--holiday); }
 
 .day.today{
-  border-color: rgba(17,17,17,0.55);
-  box-shadow: 0 0 0 3px rgba(17,17,17,0.06);
+  border-color: rgba(17,17,17,0.38);
+  box-shadow: 0 0 0 3px rgba(17,17,17,0.05);
 }
-
 .day.selected{
-  background: rgba(17,17,17,0.04);
-  border-color: rgba(17,17,17,0.45);
+  background: rgba(17,17,17,0.035);
+  border-color: rgba(17,17,17,0.26);
 }
 
 /* Emoji area */
@@ -336,11 +348,11 @@ button{
   left:50%;
   top:50%;
   transform: translate(-50%, -50%);
-  width: min(720px, calc(100% - 22px));
+  width: min(680px, calc(100% - 22px));
   background: #fff;
   border-radius: 22px;
   overflow:hidden;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.30);
 }
 
 .modal-header, .modal-footer{
@@ -388,6 +400,22 @@ button{
 .habit-title{ font-weight: 900; font-size: 14px; }
 
 /* Settings */
+.setting-email{
+  display:flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.setting-email-label{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 900;
+}
+.setting-email-value{
+  font-size: 14px;
+  font-weight: 900;
+  word-break: break-all;
+}
+
 .setting-row{
   display:flex;
   align-items:center;
