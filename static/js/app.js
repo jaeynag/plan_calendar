@@ -34,8 +34,14 @@
     return [start, end];
   }
 
-  function openModal(idSel) { $(idSel).classList.remove("hidden"); }
-  function closeAllModals() { $$(".modal").forEach((m) => m.classList.add("hidden")); }
+  function openModal(idSel) {
+    const el = $(idSel);
+    if (el) el.classList.remove("hidden");
+  }
+
+  function closeAllModals() {
+    $$(".modal").forEach((m) => m.classList.add("hidden"));
+  }
 
   function show(el) { el.classList.remove("hidden"); }
   function hide(el) { el.classList.add("hidden"); }
@@ -73,7 +79,8 @@
     return true;
   }
 
-  function bindLogin() {
+  function bindAuthUI() {
+    // 로그인
     $("#btnSignIn").addEventListener("click", async () => {
       $("#msg").textContent = "";
       const email = ($("#email").value || "").trim();
@@ -89,30 +96,61 @@
       await afterLogin();
     });
 
-    // ✅ 회원가입: Confirm email OFF 기준(가입 즉시 로그인 기대)
-    $("#btnSignUp").addEventListener("click", async () => {
-      $("#msg").textContent = "";
-      const email = ($("#email").value || "").trim();
-      const password = $("#password").value || "";
+    // 회원가입: 모달 열기
+    $("#btnSignUp").addEventListener("click", () => {
+      const currentEmail = ($("#email").value || "").trim();
 
-      if (!email || !password) {
-        $("#msg").textContent = "이메일/비번부터 넣어.";
+      $("#signupMsg").textContent = "";
+      $("#signupEmail").value = currentEmail || "";
+      $("#signupPassword").value = "";
+      $("#signupPassword2").value = "";
+
+      openModal("#signupModal");
+      setTimeout(() => $("#signupEmail")?.focus(), 0);
+    });
+
+    // 회원가입: 실행 (메일/비번/비번확인)
+    $("#btnDoSignUp").addEventListener("click", async () => {
+      $("#signupMsg").textContent = "";
+
+      const email = ($("#signupEmail").value || "").trim();
+      const password = $("#signupPassword").value || "";
+      const password2 = $("#signupPassword2").value || "";
+
+      if (!email || !password || !password2) {
+        $("#signupMsg").textContent = "메일/비번/비번확인까지 다 넣어.";
+        return;
+      }
+
+      if (password.length < 6) {
+        $("#signupMsg").textContent = "비번은 6자 이상으로.";
+        return;
+      }
+
+      if (password !== password2) {
+        $("#signupMsg").textContent = "비번이랑 비번확인이 안 맞는다.";
         return;
       }
 
       const { data, error } = await sb.auth.signUp({ email, password });
-      if (error) { $("#msg").textContent = error.message; return; }
+      if (error) { $("#signupMsg").textContent = error.message; return; }
 
-      // Confirm email OFF면 대부분 session이 바로 생김
+      // Confirm email OFF면 보통 session이 바로 생김
       if (data?.session) {
-        $("#msg").textContent = "가입 완료. 바로 로그인됨.";
+        $("#signupMsg").textContent = "가입 완료. 바로 로그인됨.";
+        closeAllModals();
         await afterLogin();
         return;
       }
 
-      $("#msg").textContent = "가입 완료. 이제 로그인 버튼 눌러.";
+      // session이 없다면(설정 반영 전/Confirm email ON 등)
+      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. (Confirm email OFF 저장됐는지 확인) 일단 로그인 눌러.";
+      // 로그인 폼에 이메일 자동 채움
+      $("#email").value = email;
+      $("#password").value = "";
     });
 
+    // 로그아웃
     $("#btnLogout").addEventListener("click", async () => {
       await sb.auth.signOut();
       await ensureAuthedOrShowLogin();
@@ -300,6 +338,7 @@
     const toDelete = [...existing].filter((x) => !incoming.has(x));
     const toUpsert = [...incoming];
 
+    // delete unchecked
     if (toDelete.length) {
       const { error } = await sb
         .from("habit_logs")
@@ -311,6 +350,7 @@
       if (error) throw error;
     }
 
+    // upsert checked
     if (toUpsert.length) {
       const payload = toUpsert.map((hid) => ({ habit_id: hid, check_date: date, user_id: userId }));
       const { error } = await sb
@@ -339,6 +379,7 @@
 
     if (!title) { alert("제목부터 써라."); return; }
 
+    // 하위호환 frequency_days(대충)
     let frequency_days = period_value;
     if (period_unit === "week") frequency_days = 7 * period_value;
     if (period_unit === "month") frequency_days = 30 * period_value;
@@ -385,6 +426,7 @@
   // Bind UI
   // -----------------------------
   function bindUI() {
+    // backdrop / x 버튼 닫기
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
 
     $("#btnSaveDay").addEventListener("click", () => {
@@ -423,7 +465,7 @@
   // -----------------------------
   async function main() {
     initYearMonth();
-    bindLogin();
+    bindAuthUI();
     bindUI();
     renderCalendarGrid();
 
