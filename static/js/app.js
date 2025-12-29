@@ -444,6 +444,7 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
   function setHeader() {
     $("#yearLabel").textContent = String(state.year);
     $("#ymTitle").textContent = `${state.month}월`;
+    $("#ymTitle").setAttribute("data-text", `${state.month}월`);
   }
 
   function computeWeeksInMonth(y, m) {
