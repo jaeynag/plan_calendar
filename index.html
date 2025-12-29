@@ -48,18 +48,23 @@
         <div class="cal-header">
           <div class="cal-year">
             <div id="yearLabel" class="year-label">2025</div>
-            <div id="userBadge" class="user-badge"></div>
+            <!-- ✅ 메일은 헤더에서 숨김(설정에서만 표시) -->
+            <div id="userBadge" class="user-badge hidden"></div>
           </div>
 
           <div class="cal-nav">
-            <button id="btnPrev" class="iconbtn" type="button" aria-label="이전 달">‹</button>
+            <button id="btnPrev" class="navchev" type="button" aria-label="이전 달">‹</button>
             <div id="ymTitle" class="month-title">12월</div>
-            <button id="btnNext" class="iconbtn" type="button" aria-label="다음 달">›</button>
+            <button id="btnNext" class="navchev" type="button" aria-label="다음 달">›</button>
           </div>
 
           <div class="cal-actions">
-            <button id="btnAddHabit" class="pillbtn" type="button">목표추가</button>
-            <button id="btnSettings" class="iconbtn" type="button" aria-label="설정">⚙</button>
+            <!-- ✅ 설정은 작은 2D 버튼 느낌 -->
+            <button id="btnSettings" class="settingsbtn" type="button" aria-label="설정">
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="gearicon">
+                <path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 1h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 7.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.83 14.52a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.4 1.05.71 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.23 1.12-.54 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -139,20 +144,21 @@
 
         <label class="field">
           <span>아이콘</span>
+          <!-- ✅ 텍스트 라벨 제거: 이모지만 -->
           <select id="habitIcon">
-            <option value="💪">💪 운동</option>
-            <option value="🏃">🏃 러닝</option>
-            <option value="🧘">🧘 스트레칭</option>
-            <option value="📚">📚 독서</option>
-            <option value="✏️">✏️ 공부</option>
-            <option value="💻">💻 코딩</option>
-            <option value="📝">📝 기록</option>
-            <option value="💧">💧 물</option>
-            <option value="💊">💊 약</option>
-            <option value="🧹">🧹 청소</option>
-            <option value="🍽️">🍽️ 식단</option>
-            <option value="🎸">🎸 악기</option>
-            <option value="📷">📷 사진</option>
+            <option value="💪">💪</option>
+            <option value="🏃">🏃</option>
+            <option value="🧘">🧘</option>
+            <option value="📚">📚</option>
+            <option value="✏️">✏️</option>
+            <option value="💻">💻</option>
+            <option value="📝">📝</option>
+            <option value="💧">💧</option>
+            <option value="💊">💊</option>
+            <option value="🧹">🧹</option>
+            <option value="🍽️">🍽️</option>
+            <option value="🎸">🎸</option>
+            <option value="📷">📷</option>
           </select>
         </label>
 
@@ -174,6 +180,19 @@
         <button class="xbtn" data-close="1" type="button">×</button>
       </div>
       <div class="modal-body">
+        <!-- ✅ 여기서만 이메일 표시 -->
+        <div class="setting-email">
+          <div class="setting-email-label">계정</div>
+          <div id="settingsEmail" class="setting-email-value">-</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ✅ 목표추가는 설정으로 들어가게 -->
+        <button id="btnOpenHabit" class="ghostbtn fullbtn" type="button">목표 추가</button>
+
+        <div class="divider"></div>
+
         <div class="setting-row">
           <div class="setting-label">배경색</div>
           <input id="themeBg" class="colorpick" type="color" value="#f6f7fb" />
