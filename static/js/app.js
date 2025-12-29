@@ -8,6 +8,13 @@
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  // safe DOM helpers (missing ids won't crash)
+  const q = (sel) => document.querySelector(sel);
+  const setText = (sel, txt) => { const el = q(sel); if (el) el.textContent = txt; };
+  const getVal = (sel) => { const el = q(sel); return el ? (el.value ?? "") : ""; };
+  const showIf = (sel) => { const el = q(sel); if (el) el.classList.remove("hidden"); };
+  const hideIf = (sel) => { const el = q(sel); if (el) el.classList.add("hidden"); };
   const on = (sel, type, handler, opts) => {
     const el = $(sel);
     if (!el) { console.warn("[bind] missing", sel); return null; }
@@ -68,7 +75,7 @@
       show(loginCard);
       hide(appShell);
       hide(btnLogout);
-      $("#userBadge").textContent = "";
+      setText("#userBadge", "");
       return false;
     }
 
@@ -83,42 +90,42 @@
 
   function bindLogin() {
     on("#btnSignIn", "click", async () => {
-      $("#msg").textContent = "";
-      const email = ($("#email").value || "").trim();
-      const password = $("#password").value || "";
+      setText("#msg", "");
+      const email = getVal("#email").trim();
+      const password = getVal("#password");
 
       if (!email || !password) {
-        $("#msg").textContent = "이메일/비번부터 넣어.";
+        setText("#msg", "이메일/비번부터 넣어.");
         return;
       }
 
       const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) { $("#msg").textContent = error.message; return; }
+      if (error) { setText("#msg", error.message); return; }
       await afterLogin();
     });
 
     // ✅ 회원가입: Confirm email OFF 기준(가입 즉시 로그인 기대)
     on("#btnSignUp", "click", async () => {
-      $("#msg").textContent = "";
-      const email = ($("#email").value || "").trim();
-      const password = $("#password").value || "";
+      setText("#msg", "");
+      const email = getVal("#email").trim();
+      const password = getVal("#password");
 
       if (!email || !password) {
-        $("#msg").textContent = "이메일/비번부터 넣어.";
+        setText("#msg", "이메일/비번부터 넣어.");
         return;
       }
 
       const { data, error } = await sb.auth.signUp({ email, password });
-      if (error) { $("#msg").textContent = error.message; return; }
+      if (error) { setText("#msg", error.message); return; }
 
       // Confirm email OFF면 대부분 session이 바로 생김
       if (data?.session) {
-        $("#msg").textContent = "가입 완료. 바로 로그인됨.";
+        setText("#msg", "가입 완료. 바로 로그인됨.");
         await afterLogin();
         return;
       }
 
-      $("#msg").textContent = "가입 완료. 이제 로그인 버튼 눌러.";
+      setText("#msg", "가입 완료. 이제 로그인 버튼 눌러.");
     });
 
     on("#btnLogout", "click", async () => {
@@ -402,7 +409,7 @@
       });
     });
 
-    on("#btnAddHabit", "click", () => openModal("#habitModal"));
+    onAny(["#btnAddHabit","#btnAddGoal","#btnAdd","#btnAddTarget"], "click", () => openModal("#habitModal"));
 
     on("#btnCreateHabit", "click", () => {
       createHabit().catch((e) => {
