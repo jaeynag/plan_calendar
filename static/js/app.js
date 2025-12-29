@@ -78,18 +78,39 @@
       $("#msg").textContent = "";
       const email = ($("#email").value || "").trim();
       const password = $("#password").value || "";
+
+      if (!email || !password) {
+        $("#msg").textContent = "이메일/비번부터 넣어.";
+        return;
+      }
+
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) { $("#msg").textContent = error.message; return; }
       await afterLogin();
     });
 
+    // ✅ 회원가입: Confirm email OFF 기준(가입 즉시 로그인 기대)
     $("#btnSignUp").addEventListener("click", async () => {
       $("#msg").textContent = "";
       const email = ($("#email").value || "").trim();
       const password = $("#password").value || "";
-      const { error } = await sb.auth.signUp({ email, password });
+
+      if (!email || !password) {
+        $("#msg").textContent = "이메일/비번부터 넣어.";
+        return;
+      }
+
+      const { data, error } = await sb.auth.signUp({ email, password });
       if (error) { $("#msg").textContent = error.message; return; }
-      $("#msg").textContent = "회원가입 완료. 이메일 인증이 켜져있으면 인증 후 로그인해.";
+
+      // Confirm email OFF면 대부분 session이 바로 생김
+      if (data?.session) {
+        $("#msg").textContent = "가입 완료. 바로 로그인됨.";
+        await afterLogin();
+        return;
+      }
+
+      $("#msg").textContent = "가입 완료. 이제 로그인 버튼 눌러.";
     });
 
     $("#btnLogout").addEventListener("click", async () => {
