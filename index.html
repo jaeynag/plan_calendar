@@ -56,11 +56,7 @@
           </div>
 
           <div class="cal-actions">
-            <button id="btnSettings" class="settingsbtn" type="button" aria-label="설정">
-              <svg class="gearicon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.2-.16.25-.45.12-.67l-1.92-3.32c-.13-.22-.39-.31-.62-.22l-2.39.96c-.5-.38-1.04-.7-1.65-.94l-.36-2.54A.5.5 0 0 0 13.9 1h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.61.24-1.15.56-1.65.94l-2.39-.96c-.23-.09-.49 0-.62.22L2.69 7.85c-.13.22-.08.51.12.67l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.81 14.56c-.2.16-.25.45-.12.67l1.92 3.32c.13.22.39.31.62.22l2.39-.96c.5.38 1.04.7 1.65.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.61-.24 1.15-.56 1.65-.94l2.39.96c.23.09.49 0 .62-.22l1.92-3.32c.13-.22.08-.51-.12-.67l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z"/>
-              </svg>
-            </button>
+            <button id="btnSettings" class="settingsbtn" type="button" aria-label="설정">⚙︎</button>
           </div>
         </div>
 
@@ -139,7 +135,7 @@
         </label>
 
         <label class="field">
-          <span>아이콘</span>
+          <span>아이콘(이모지)</span>
           <select id="habitIcon">
             <option value="💪">💪</option>
             <option value="🏃">🏃</option>
@@ -156,6 +152,20 @@
             <option value="📷">📷</option>
           </select>
         </label>
+
+        <label class="field">
+          <span>아이콘(사진, 선택)</span>
+          <input id="habitPhoto" type="file" accept="image/*" />
+        </label>
+
+        <div id="habitPhotoPreview" class="photo-preview hidden">
+          <img id="habitPhotoImg" alt="미리보기" />
+          <button id="btnClearPhoto" class="ghostbtn" type="button">사진 지우기</button>
+        </div>
+
+        <div class="hint">
+          사진은 중앙 기준으로 자동 크롭해서 아이콘처럼 쓸 거야.
+        </div>
 
         <div id="habitMsg" class="hint"></div>
       </div>
@@ -216,7 +226,7 @@
 
         <div class="divider"></div>
 
-        <!-- ✅ 계정은 로그아웃 바로 위 -->
+        <!-- 계정은 로그아웃 바로 위 -->
         <div class="setting-email">
           <div class="setting-email-label">계정</div>
           <div id="settingsEmail" class="setting-email-value">-</div>
