@@ -281,7 +281,6 @@ if (!sess) {
 
     // After DOM updates, compute sizing vars (and keep it responsive)
     requestAnimationFrame(applyIconSizingVars);
-  });
   }
 
   // -----------------------------
