@@ -1,4 +1,4 @@
-/* Plan Calendar v8 - variable weeks + 2-line emoji */
+/* Plan Calendar v9 - square corners + 2-row icons + photo preview */
 :root{
   --bg: #f6f7fb;
   --text: #111111;
@@ -16,7 +16,6 @@
   --sun: #e11d48;
   --sat: #2563eb;
   --holiday: #dc2626;
-  --gear: rgba(0,0,0,0.72);
 }
 
 *{ box-sizing: border-box; }
@@ -35,18 +34,9 @@ body{
 
 .hidden{ display:none !important; }
 
-/* Full-bleed container */
-.container{
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-}
+.container{ width: 100%; max-width: 100%; margin: 0; padding: 0; }
 
-/* Login card keeps margin */
-#loginCard.card{
-  margin: 14px 12px 18px;
-}
+#loginCard.card{ margin: 14px 12px 18px; }
 
 .card{
   background: var(--surface);
@@ -89,9 +79,7 @@ body{
   gap: 10px;
   margin-top: 6px;
 }
-@media (max-width: 420px){
-  .login-actions{ flex-direction: column; }
-}
+@media (max-width: 420px){ .login-actions{ flex-direction: column; } }
 
 /* Buttons */
 button{
@@ -146,11 +134,7 @@ button{
 }
 
 @media (min-width: 768px){
-  .container{
-    max-width: 920px;
-    margin: 0 auto;
-    padding: 18px 18px 26px;
-  }
+  .container{ max-width: 920px; margin: 0 auto; padding: 18px 18px 26px; }
   #appShell .calendar-shell{
     height: auto;
     border: 1px solid var(--border);
@@ -168,25 +152,10 @@ button{
   padding: 6px 2px 10px;
 }
 
-.cal-year{
-  display:flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items:flex-start;
-  min-width: 60px;
-}
-.year-label{
-  font-weight: 900;
-  font-size: 13px;
-  color: var(--muted);
-}
+.cal-year{ display:flex; flex-direction: column; gap: 2px; align-items:flex-start; min-width: 60px; }
+.year-label{ font-weight: 900; font-size: 13px; color: var(--muted); }
 
-.cal-nav{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap: 6px;
-}
+.cal-nav{ display:flex; align-items:center; justify-content:center; gap: 6px; }
 .month-title{
   font-family: "Jua", "Nunito", sans-serif;
   font-size: clamp(30px, 8vw, 40px);
@@ -209,12 +178,9 @@ button{
 }
 .navchev:hover{ background: rgba(0,0,0,0.06); }
 
-.cal-actions{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-}
+.cal-actions{ display:flex; align-items:center; justify-content:flex-end; }
 
+/* Settings btn: flat, subtle */
 .settingsbtn{
   width: 40px;
   height: 40px;
@@ -224,10 +190,10 @@ button{
   display:flex;
   align-items:center;
   justify-content:center;
+  font-size: 18px;
 }
 .settingsbtn:hover{ background: rgba(0,0,0,0.10); }
 .settingsbtn:active{ transform: scale(0.98); }
-.gearicon{ width: 18px; height: 18px; fill: var(--gear); }
 
 .weekdays{
   display:grid;
@@ -242,14 +208,14 @@ button{
 .weekdays .sun{ color: var(--sun); }
 .weekdays .sat{ color: var(--sat); }
 
-/* Grid: rows are set by JS (4~6) */
+/* Grid: SQUARE corners */
 .grid{
   flex: 1;
   display:grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px;
   background: var(--border);
-  border-radius: 18px;
+  border-radius: 0;        /* ✅ 각지게 */
   overflow: hidden;
 }
 
@@ -264,7 +230,7 @@ button{
       var(--cell-bottom) 100%
     );
   border: none;
-  border-radius: 0;
+  border-radius: 0;        /* ✅ 각지게 */
   padding: 10px 10px 10px;
   display:flex;
   flex-direction: column;
@@ -291,42 +257,47 @@ button{
 .day.today{ box-shadow: inset 0 0 0 2px rgba(0,0,0,0.22); }
 .day.selected{ box-shadow: inset 0 0 0 2px rgba(0,0,0,0.14); }
 
-/* ✅ Emoji: allow up to 2 lines (wrap), still clip beyond */
+/* Icons area */
 .day-dots{
-  display:flex;
-  flex-wrap: wrap;
-  gap: 4px 6px;
-  align-items:flex-start;
-  align-content:flex-start;
-  min-height: 44px;
-  max-height: 58px; /* 대충 2줄 */
+  /* ✅ 2줄 고정 그리드: 3열 x 2행 */
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 6px;
+  align-items:center;
+  justify-items:center;
+  align-content:start;
+  min-height: 58px;
+  max-height: 58px;
   overflow:hidden;
 }
-.day-dots .e{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width: 1em;
-  height: 1em;
+
+/* single icon: center and bigger */
+.day-dots.single{
+  grid-template-columns: 1fr;
+  min-height: 58px;
+  max-height: 58px;
 }
 
-/* size by count */
-.day-dots.emoji-count-1{ justify-content:center; align-items:center; min-height: 48px; max-height: 48px; }
-.day-dots.emoji-count-1 .e{ font-size: 34px; }
-.day-dots.emoji-count-2 .e{ font-size: 24px; }
-.day-dots.emoji-count-3 .e{ font-size: 22px; }
-.day-dots.emoji-count-4 .e{ font-size: 20px; }
-.day-dots.emoji-count-5 .e{ font-size: 18px; }
-.day-dots.emoji-count-6 .e{ font-size: 17px; }
-.day-dots.emoji-count-7 .e{ font-size: 16px; }
-.day-dots.emoji-count-8 .e,
-.day-dots.emoji-count-9 .e,
-.day-dots.emoji-count-10 .e,
-.day-dots.emoji-count-11 .e,
-.day-dots.emoji-count-12 .e,
-.day-dots.emoji-count-13 .e,
-.day-dots.emoji-count-14 .e,
-.day-dots.emoji-count-15 .e{ font-size: 15px; }
+.icon-emoji{
+  font-size: 20px;
+  line-height: 1;
+}
+
+.day-dots.single .icon-emoji{ font-size: 34px; }
+
+.icon-img{
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  object-fit: cover;
+  display:block;
+}
+.day-dots.single .icon-img{
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
 
 /* Modals */
 .modal.hidden{ display:none; }
@@ -388,10 +359,18 @@ button{
   background: var(--surface2);
 }
 .habit-left{ display:flex; align-items:center; gap: 10px; }
-.habit-emoji{ font-size: 20px; }
 .habit-title{ font-weight: 900; font-size: 14px; }
 
-/* Progress list */
+.habit-icon{
+  width: 22px; height: 22px;
+  display:flex; align-items:center; justify-content:center;
+}
+.habit-icon img{
+  width: 22px; height: 22px; border-radius: 8px; object-fit: cover;
+}
+.habit-icon .icon-emoji{ font-size: 20px; }
+
+/* Progress */
 .progress-list{ display:flex; flex-direction: column; gap: 10px; }
 .progress-row{
   display:flex;
@@ -404,11 +383,30 @@ button{
   background: var(--surface2);
 }
 .progress-left{ display:flex; align-items:center; gap: 10px; }
-.progress-emoji{ font-size: 22px; }
 .progress-title{ font-weight: 900; font-size: 14px; }
 .progress-right{ text-align:right; }
 .progress-count{ font-weight: 900; font-size: 14px; }
 .progress-sub{ font-size: 12px; color: var(--muted); }
+
+/* Photo preview */
+.photo-preview{
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface2);
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.photo-preview img{
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  object-fit: cover;
+  display:block;
+}
 
 /* Settings */
 .setting-email{ display:flex; flex-direction: column; gap: 4px; }
