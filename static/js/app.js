@@ -470,7 +470,54 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     });
   }
 
-  function renderCalendarGrid() {
+  
+
+function calcIconSize(count, cellW) {
+  // cellW: .day 카드의 실제 너비(px)
+  const root = getComputedStyle(document.documentElement);
+  const iconGap = parseInt(root.getPropertyValue("--icon-gap")) || 2;
+
+  // .day padding(좌/우) 반영 (기본 3~4px, 안전하게 8px 정도 여유)
+  const innerW = Math.max(10, Math.floor(cellW - 8));
+
+  if (count <= 1) {
+    // 1개: 칸 너비에 최대한 꽉 차게
+    return Math.min(46, innerW);
+  }
+  if (count === 2) {
+    // 2개: 위/아래로 큼지막하게
+    return Math.min(34, innerW);
+  }
+  // 3개 이상: 2열 래핑이므로 반으로 쪼갬
+  return Math.min(22, Math.max(14, Math.floor((innerW - iconGap) / 2)));
+}
+
+function applyUniformRowHeight(weeks) {
+  const grid = $("#calGrid");
+  const anyDay = grid.querySelector(".day:not(.empty)");
+  if (!anyDay) return;
+
+  const dayStyle = getComputedStyle(anyDay);
+  const padTop = parseFloat(dayStyle.paddingTop) || 0;
+  const padBottom = parseFloat(dayStyle.paddingBottom) || 0;
+  const gap = parseFloat(dayStyle.gap) || 0;
+
+  const root = getComputedStyle(document.documentElement);
+  const iconGap = parseInt(root.getPropertyValue("--icon-gap")) || 2;
+
+  const cellW = anyDay.getBoundingClientRect().width;
+  const size2 = calcIconSize(2, cellW);
+
+  // day-num은 CSS에서 height:14px로 고정(없으면 14로 가정)
+  const dayNumH = 14;
+
+  // 2개(세로2개) 기준으로 모든 주 높이를 통일
+  const iconAreaH = (size2 * 2) + iconGap + 3;
+  const rowH = Math.ceil(padTop + padBottom + dayNumH + gap + iconAreaH + 2); // +2 buffer
+
+  grid.style.gridTemplateRows = `repeat(${weeks}, ${rowH}px)`;
+}
+function renderCalendarGrid() {
     setHeader();
     const grid = $("#calGrid");
     grid.innerHTML = "";
@@ -517,6 +564,7 @@ for (let i = 0; i < totalCells; i++) {
     }
 
     renderIcons();
+    applyUniformRowHeight(weeks);
     markTodaySelectedHoliday();
   }
 
@@ -534,8 +582,30 @@ for (let i = 0; i < totalCells; i++) {
       const uniqIds = Array.from(new Set(ids));
       const shown = uniqIds.slice(0, 6); // 2열 * 3줄
 
-      if (shown.length === 1) el.classList.add("single");
-      else if (shown.length === 2) el.classList.add("double");
+// 개수별 클래스(레이아웃/센터링용)
+if (shown.length === 1) el.classList.add("single");
+else if (shown.length === 2) el.classList.add("double");
+else el.classList.add("multi");
+
+// 개수별 아이콘 사이즈: 1개는 꽉, 2개는 큼직, 3개부터는 2열 래핑
+const dayEl = el.closest(".day");
+const cellW = dayEl ? dayEl.getBoundingClientRect().width : 40;
+
+const size = calcIconSize(shown.length, cellW);
+el.style.setProperty("--icon-size", `${size}px`);
+
+// 2줄까지만 허용해서 3번째부터 오른쪽으로 넘어가게(1·3 / 2·4)
+const root = getComputedStyle(document.documentElement);
+const iconGap = parseInt(root.getPropertyValue("--icon-gap")) || 2;
+el.style.setProperty("--icon-area-limit", `${(size * 2) + iconGap + 3}px`);
+
+// 1개일 때는 중앙에 딱 보이게
+if (shown.length === 1) {
+  el.style.maxHeight = "none";
+} else {
+  el.style.maxHeight = "var(--icon-area-limit)";
+}
+
 
       const parts = [];
       for (const hid of shown) {
