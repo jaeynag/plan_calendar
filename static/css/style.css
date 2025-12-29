@@ -1,5 +1,5 @@
-/* Plan Calendar - tighter grid + split cell */
-/* Defaults (JS overwrites derived vars) */
+/* Plan Calendar v7 - full screen, roomy on mobile */
+/* Derived theme vars are still computed in app.js */
 :root{
   --bg: #f6f7fb;
   --text: #111111;
@@ -31,18 +31,22 @@ body{
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   padding-top: env(safe-area-inset-top);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .hidden{ display:none !important; }
 
+/* Full-bleed container (calendar fills screen) */
 .container{
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 14px 12px 18px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
-@media (min-width: 768px){
-  .container{ max-width: 820px; padding: 18px 18px 26px; }
+
+/* Login card still needs margin */
+#loginCard.card{
+  margin: 14px 12px 18px;
 }
 
 .card{
@@ -127,33 +131,44 @@ button{
   font-weight: 900;
 }
 
-/* Calendar shell */
-.calendar-shell{
+/* ---------- Calendar ---------- */
+/* Fill viewport height on mobile, with a bit of inner padding */
+#appShell .calendar-shell{
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  box-shadow: var(--shadow);
-  padding: 10px; /* 조금 줄임 */
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px 12px 14px;
+  display:flex;
+  flex-direction: column;
 }
 
+@media (min-width: 768px){
+  /* Desktop: keep nicer card */
+  .container{
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 18px 18px 26px;
+  }
+  #appShell .calendar-shell{
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+  }
+}
+
+/* Header row bigger and less cramped */
 .cal-header{
   display:grid;
   grid-template-columns: 1fr auto 1fr;
   align-items:center;
   gap: 8px;
-  padding: 6px 4px 10px;
-}
-@media (max-width: 380px){
-  .cal-header{
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "year actions"
-      "nav nav";
-    row-gap: 6px;
-  }
-  .cal-year{ grid-area: year; }
-  .cal-actions{ grid-area: actions; justify-content: flex-end; }
-  .cal-nav{ grid-area: nav; justify-content: center; }
+  padding: 6px 2px 10px;
 }
 
 .cal-year{
@@ -174,23 +189,23 @@ button{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap: 2px;
+  gap: 6px;
 }
 .month-title{
   font-family: "Jua", "Nunito", sans-serif;
-  font-size: clamp(26px, 7vw, 32px);
+  font-size: clamp(30px, 8vw, 40px);
   font-weight: 900;
   letter-spacing: -0.02em;
-  padding: 0 6px;
-  min-width: 120px;
+  padding: 0 8px;
+  min-width: 140px;
   text-align:center;
 }
 
 .navchev{
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  font-size: 28px;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  font-size: 30px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -206,9 +221,9 @@ button{
 
 /* Settings button */
 .settingsbtn{
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
   background: rgba(0,0,0,0.06);
   border: 1px solid rgba(0,0,0,0.04);
   display:flex;
@@ -217,59 +232,53 @@ button{
 }
 .settingsbtn:hover{ background: rgba(0,0,0,0.10); }
 .settingsbtn:active{ transform: scale(0.98); }
-.gearicon{
-  width: 18px;
-  height: 18px;
-  fill: var(--gear);
-}
+.gearicon{ width: 18px; height: 18px; fill: var(--gear); }
 
-/* Weekdays (gap 줄여서 '선' 느낌) */
+/* Weekdays */
 .weekdays{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px;
-  padding: 6px 2px 10px;
+  padding: 8px 2px 10px;
   font-size: 12px;
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 900;
 }
 .weekdays > div{ text-align:center; }
 .weekdays .sun{ color: var(--sun); }
 .weekdays .sat{ color: var(--sat); }
 
-/* Calendar grid: gap 거의 1px로 */
+/* Grid: make it take remaining height */
 .grid{
+  flex: 1;
   display:grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1px; /* ✅ 여기 핵심 */
-  background: var(--border); /* gap이 선처럼 보이게 */
-  border-radius: 16px;
-  overflow: hidden; /* 선 라운딩 유지 */
+  grid-template-rows: repeat(6, 1fr);
+  gap: 1px;                 /* 선 하나 */
+  background: var(--border);/* gap이 선처럼 보이게 */
+  border-radius: 18px;
+  overflow: hidden;
 }
 
-/* Day cell: 둥글기 줄이고, 패딩 줄이고, 날짜 영역(top) 더 작게 */
+/* Cells: roomier, no cramped padding */
 .day{
   background:
     linear-gradient(
       to bottom,
       var(--cell-top) 0%,
-      var(--cell-top) 38%,     /* ✅ 날짜 영역 더 얇게 */
-      var(--cell-bottom) 38%,
+      var(--cell-top) 34%,     /* 날짜영역 더 얇게 */
+      var(--cell-bottom) 34%,
       var(--cell-bottom) 100%
     );
-  border: none;              /* grid 배경이 선 역할 */
-  border-radius: 0;          /* 격자감 유지 */
-  min-height: clamp(70px, 11.5vw, 92px);
-  padding: 8px 8px;          /* ✅ 여백 줄임 */
+  border: none;
+  border-radius: 0;
+  padding: 10px 10px 10px;  /* ✅ 여백 늘려서 덜 오밀조밀 */
   display:flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: box-shadow 0.12s ease, background 0.12s ease;
+  min-height: 0;           /* grid row가 높이 결정 */
   touch-action: manipulation;
 }
-
-.day:hover{ box-shadow: inset 0 0 0 999px rgba(0,0,0,0.015); }
-.day:active{ transform: scale(0.99); }
 
 .day.empty{
   background: rgba(0,0,0,0.02);
@@ -279,30 +288,26 @@ button{
   display:flex;
   justify-content:flex-end;
   align-items:center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
-  color: rgba(0,0,0,0.72);
+  color: rgba(0,0,0,0.78);
   line-height: 1;
 }
 .day.sun .day-num{ color: var(--sun); }
 .day.sat .day-num{ color: var(--sat); }
 .day.holiday .day-num{ color: var(--holiday); }
 
-/* today/selected는 테두리 대신 overlay로 */
-.day.today{
-  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.22);
-}
-.day.selected{
-  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.16);
-}
+/* today/selected highlight */
+.day.today{ box-shadow: inset 0 0 0 2px rgba(0,0,0,0.22); }
+.day.selected{ box-shadow: inset 0 0 0 2px rgba(0,0,0,0.14); }
 
 /* Emoji area */
 .day-dots{
   display:flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 4px;                 /* ✅ 조금 더 여유 */
   align-items:flex-end;
-  min-height: 26px;
+  min-height: 28px;
   overflow:hidden;
 }
 .day-dots .e{
@@ -313,18 +318,19 @@ button{
   height: 1em;
 }
 
+/* Sizing by count */
 .day-dots.emoji-count-1{
   justify-content:center;
   align-items:center;
-  min-height: 40px;
+  min-height: 46px;
 }
-.day-dots.emoji-count-1 .e{ font-size: 32px; }
-.day-dots.emoji-count-2 .e{ font-size: 22px; }
-.day-dots.emoji-count-3 .e{ font-size: 20px; }
-.day-dots.emoji-count-4 .e{ font-size: 18px; }
-.day-dots.emoji-count-5 .e{ font-size: 16px; }
-.day-dots.emoji-count-6 .e{ font-size: 15px; }
-.day-dots.emoji-count-7 .e{ font-size: 14px; }
+.day-dots.emoji-count-1 .e{ font-size: 34px; }
+.day-dots.emoji-count-2 .e{ font-size: 24px; }
+.day-dots.emoji-count-3 .e{ font-size: 22px; }
+.day-dots.emoji-count-4 .e{ font-size: 20px; }
+.day-dots.emoji-count-5 .e{ font-size: 18px; }
+.day-dots.emoji-count-6 .e{ font-size: 17px; }
+.day-dots.emoji-count-7 .e{ font-size: 16px; }
 .day-dots.emoji-count-8 .e,
 .day-dots.emoji-count-9 .e,
 .day-dots.emoji-count-10 .e,
@@ -332,9 +338,9 @@ button{
 .day-dots.emoji-count-12 .e,
 .day-dots.emoji-count-13 .e,
 .day-dots.emoji-count-14 .e,
-.day-dots.emoji-count-15 .e{ font-size: 13px; }
+.day-dots.emoji-count-15 .e{ font-size: 15px; }
 
-/* Modal */
+/* ---------- Modals ---------- */
 .modal.hidden{ display:none; }
 .modal{ position: fixed; inset:0; z-index: 50; }
 .modal-backdrop{ position:absolute; inset:0; background: rgba(0,0,0,0.42); }
@@ -413,7 +419,6 @@ button{
   font-weight: 900;
   word-break: break-all;
 }
-
 .setting-row{
   display:flex;
   align-items:center;
@@ -421,10 +426,7 @@ button{
   gap: 12px;
   padding: 10px 0;
 }
-.setting-label{
-  font-weight: 900;
-  font-size: 14px;
-}
+.setting-label{ font-weight: 900; font-size: 14px; }
 .colorpick{
   width: 56px;
   height: 40px;
