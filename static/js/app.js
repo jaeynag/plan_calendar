@@ -485,9 +485,8 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     const weeks = computeWeeksInMonth(y, m);
     const totalCells = weeks * 7;
 
-    grid.style.gridTemplateRows = `repeat(${weeks}, 1fr)`;
-
-    for (let i = 0; i < totalCells; i++) {
+    grid.style.gridTemplateRows = `repeat(${weeks}, auto)`;
+for (let i = 0; i < totalCells; i++) {
       const cell = document.createElement("div");
       const dayNum = i - firstDow + 1;
 
