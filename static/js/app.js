@@ -6,24 +6,46 @@
   const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-
-  // safe DOM helpers (missing ids won't crash)
   const q = (sel) => document.querySelector(sel);
-  const setText = (sel, txt) => { const el = q(sel); if (el) el.textContent = txt; };
-  const getVal = (sel) => { const el = q(sel); return el ? (el.value ?? "") : ""; };
-  const showIf = (sel) => { const el = q(sel); if (el) el.classList.remove("hidden"); };
-  const hideIf = (sel) => { const el = q(sel); if (el) el.classList.add("hidden"); };
-  const on = (sel, type, handler, opts) => {
-    const el = $(sel);
-    if (!el) { console.warn("[bind] missing", sel); return null; }
-    el.addEventListener(type, handler, opts);
-    return el;
+  const qa = (sel) => Array.from(document.querySelectorAll(sel));
+  const pick = (...sels) => {
+    for (const s of sels) { const el = q(s); if (el) return el; }
+    return null;
   };
-  const setText = (sel, text) => { const el = $(sel); if (el) el.textContent = text; };
 
+  const $ = (sel) => q(sel);
+  const $$ = (sel) => qa(sel);
 
+  const setText = (elOrSel, text) => {
+    const el = typeof elOrSel === "string" ? q(elOrSel) : elOrSel;
+    if (el) el.textContent = text ?? "";
+  };
+
+  const show = (elOrSel) => {
+    const el = typeof elOrSel === "string" ? q(elOrSel) : elOrSel;
+    if (el) el.classList.remove("hidden");
+  };
+
+  const hide = (elOrSel) => {
+    const el = typeof elOrSel === "string" ? q(elOrSel) : elOrSel;
+    if (el) el.classList.add("hidden");
+  };
+
+  function on(sel, type, handler) {
+    const el = q(sel);
+    if (!el) { console.warn("[bind] missing", sel); return null; }
+    el.addEventListener(type, handler);
+    return el;
+  }
+
+  function onAny(selectors, type, handler) {
+    for (const sel of selectors) {
+      const el = q(sel);
+      if (el) { el.addEventListener(type, handler); return el; }
+    }
+    console.warn("[bind] missing all", selectors.join(", "));
+    return null;
+  }
   const state = {
     session: null,
     year: null,
@@ -49,12 +71,8 @@
     return [start, end];
   }
 
-  function openModal(idSel) { $(idSel).classList.remove("hidden"); }
+  function openModal(idSel) { const el = q(idSel); if (el) el.classList.remove("hidden"); }
   function closeAllModals() { $$(".modal").forEach((m) => m.classList.add("hidden")); }
-
-  function show(el) { el.classList.remove("hidden"); }
-  function hide(el) { el.classList.add("hidden"); }
-
   // -----------------------------
   // Auth
   // -----------------------------
@@ -67,15 +85,16 @@
   async function ensureAuthedOrShowLogin() {
     const sess = await refreshSession();
 
-    const loginCard = $("#loginCard");
-    const appShell = $("#appShell");
-    const btnLogout = $("#btnLogout");
-
-    if (!sess) {
+    const loginCard = pick("#loginCard","#loginSection","#authCard");
+    const appShell = pick("#appShell","#app","#main","#appRoot");
+    const btnLogout = pick("#btnLogout","#logoutBtn","#btnSignOut");
+    const userBadge = pick("#userBadge","#userEmailBadge","#userEmail");
+    const settingsEmail = pick("#settingsEmail","#accountEmail");
+if (!sess) {
       show(loginCard);
       hide(appShell);
       hide(btnLogout);
-      setText("#userBadge", "");
+      setText(userBadge, "");
       return false;
     }
 
@@ -89,10 +108,10 @@
   }
 
   function bindLogin() {
-    on("#btnSignIn", "click", async () => {
+    onAny(["#btnSignIn","#btnLogin","#loginBtn"], "click", async () => {
       setText("#msg", "");
-      const email = getVal("#email").trim();
-      const password = getVal("#password");
+      const email = (pick("#email","#loginEmail")?.value || "").trim();
+      const password = (pick("#password","#loginPassword")?.value || "");
 
       if (!email || !password) {
         setText("#msg", "이메일/비번부터 넣어.");
@@ -105,10 +124,10 @@
     });
 
     // ✅ 회원가입: Confirm email OFF 기준(가입 즉시 로그인 기대)
-    on("#btnSignUp", "click", async () => {
+    onAny(["#btnSignUp","#btnRegister","#signupBtn"], "click", async () => {
       setText("#msg", "");
-      const email = getVal("#email").trim();
-      const password = getVal("#password");
+      const email = (pick("#email","#loginEmail")?.value || "").trim();
+      const password = (pick("#password","#loginPassword")?.value || "");
 
       if (!email || !password) {
         setText("#msg", "이메일/비번부터 넣어.");
@@ -120,15 +139,15 @@
 
       // Confirm email OFF면 대부분 session이 바로 생김
       if (data?.session) {
-        setText("#msg", "가입 완료. 바로 로그인됨.");
+        $("#msg").textContent = "가입 완료. 바로 로그인됨.";
         await afterLogin();
         return;
       }
 
-      setText("#msg", "가입 완료. 이제 로그인 버튼 눌러.");
+      $("#msg").textContent = "가입 완료. 이제 로그인 버튼 눌러.";
     });
 
-    on("#btnLogout", "click", async () => {
+    onAny(["#btnLogout","#logoutBtn","#btnSignOut"], "click", async () => {
       await sb.auth.signOut();
       await ensureAuthedOrShowLogin();
     });
@@ -143,15 +162,15 @@
     state.month = now.getMonth() + 1;
   }
 
-  function setTitle() {
-    $("#ymTitle").textContent = `${state.year}년 ${state.month}월`;
-  }
+  function setTitle() { setText(pick("#ymTitle","#monthTitle","#monthLabel"), String(state.month)); }
 
   function renderCalendarGrid() {
     setTitle();
 
-    const grid = $("#calGrid");
+    const grid = pick("#calGrid","#calendarGrid");
+    if (!grid) { console.warn("[ui] missing calendar grid"); return; }
     grid.innerHTML = "";
+    grid.style.gridAutoRows = `minmax(var(--rowMin, 96px), auto)`;
 
     const y = state.year;
     const m = state.month;
@@ -194,12 +213,75 @@
     renderDots();
   }
 
+  function applyIconSizingVars() {
+    const grid = pick("#calendarGrid","#calGrid");
+    const first = grid ? grid.querySelector(".day") : null;
+    if (!first) return;
+    const w = Math.round(first.getBoundingClientRect().width);
+    if (!w || w < 20) return;
+
+    // Base cell height: slightly taller than width; rows can grow when icons increase
+    const rowMin = Math.max(96, Math.min(132, Math.round(w * 1.18)));
+
+    // Icon sizes: 1 icon fills, 2 icons stack, 3+ uses 2-col grid smaller
+    const icon1 = Math.max(34, Math.min(72, w - 18));
+    const icon2 = Math.max(30, Math.min(64, w - 20));
+    const iconS = Math.max(22, Math.min(46, Math.floor((w - 22) / 2)));
+
+    const root = document.documentElement;
+    root.style.setProperty("--rowMin", rowMin + "px");
+    root.style.setProperty("--icon1", icon1 + "px");
+    root.style.setProperty("--icon2", icon2 + "px");
+    root.style.setProperty("--iconS", iconS + "px");
+  }
+
   function renderDots() {
-    $$(".day-dots").forEach((el) => {
-      const date = el.getAttribute("data-date");
-      const ids = state.logsByDate[date] || [];
-      el.textContent = ids.length ? "•".repeat(Math.min(ids.length, 6)) : "";
+    const habitsById = new Map(state.habits.map(h => [h.id, h]));
+
+    $$(".day").forEach((dayEl) => {
+      const iso = dayEl.getAttribute("data-iso");
+      const dotsEl = dayEl.querySelector(".day-dots");
+      if (!dotsEl) return;
+
+      // reset
+      dotsEl.textContent = "";
+      dotsEl.classList.remove("count-1", "count-2", "count-3p");
+
+      const ids = iso ? (state.logsByDate.get(iso) || []) : [];
+      const shown = ids.slice(0, 6);
+
+      if (!shown.length) return;
+
+      if (shown.length === 1) dotsEl.classList.add("count-1");
+      else if (shown.length === 2) dotsEl.classList.add("count-2");
+      else dotsEl.classList.add("count-3p");
+
+      for (const habitId of shown) {
+        const h = habitsById.get(habitId);
+        if (!h) continue;
+
+        // Prefer photo/icon_url, fallback to emoji
+        if (h.icon_url) {
+          const img = document.createElement("img");
+          img.className = "icon-img";
+          img.alt = "";
+          img.loading = "lazy";
+          img.decoding = "async";
+          img.referrerPolicy = "no-referrer";
+          img.src = h.icon_url;
+          dotsEl.appendChild(img);
+        } else {
+          const span = document.createElement("span");
+          span.className = "icon-emoji";
+          span.textContent = h.emoji || "✅";
+          dotsEl.appendChild(span);
+        }
+      }
     });
+
+    // After DOM updates, compute sizing vars (and keep it responsive)
+    requestAnimationFrame(applyIconSizingVars);
+  });
   }
 
   // -----------------------------
@@ -402,7 +484,7 @@
   function bindUI() {
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
 
-    on("#btnSaveDay", "click", () => {
+    onAny(["#btnSaveDay","#btnSave"], "click", () => {
       saveLogsForActiveDate().catch((e) => {
         console.error(e);
         alert("저장 실패. 콘솔 보자.");
@@ -418,11 +500,11 @@
       });
     });
 
-    on("#btnPrev", "click", () => {
+    $("#btnPrev").addEventListener("click", () => {
       gotoPrevMonth().catch((e) => { console.error(e); alert("이동 실패"); });
     });
 
-    on("#btnNext", "click", () => {
+    $("#btnNext").addEventListener("click", () => {
       gotoNextMonth().catch((e) => { console.error(e); alert("이동 실패"); });
     });
   }
@@ -448,6 +530,17 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+
+    // Responsive sizing (cell width -> icon sizes / row min height)
+    try {
+      const grid = pick("#calendarGrid","#calGrid");
+      if (grid && "ResizeObserver" in window) {
+        const ro = new ResizeObserver(() => applyIconSizingVars());
+        ro.observe(grid);
+      }
+      window.addEventListener("orientationchange", () => setTimeout(applyIconSizingVars, 150));
+      window.addEventListener("resize", () => applyIconSizingVars(), { passive: true });
+    } catch {}
     main().catch((e) => {
       console.error(e);
       alert("초기화 실패. 콘솔 보자.");
