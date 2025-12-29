@@ -4,7 +4,7 @@
 */
 (() => {
   "use strict";
-  console.log("[PlanCal] app.js v38 loaded");
+  console.log("[PlanCal] app.js v39 loaded");
 
 /* global supabase */
 (() => {
@@ -91,29 +91,33 @@
   }
 
   async function ensureAuthedOrShowLogin() {
-    const sess = await refreshSession();
+  const sess = await refreshSession();
 
-    const loginCard = pick("#loginCard","#loginSection","#authCard");
-    const appShell = pick("#appShell","#app","#main","#appRoot");
-    const btnLogout = pick("#btnLogout","#logoutBtn","#btnSignOut");
-    const userBadge = pick("#userBadge","#userEmailBadge","#userEmail");
-    const settingsEmail = pick("#settingsEmail","#accountEmail");
-if (!sess) {
-      show(loginCard);
-      hide(appShell);
-      hide(btnLogout);
-      setText("#userBadge", "");
-      return false;
-    }
+  const loginCard = pick("#loginCard","#loginSection","#authCard");
+  const appShell = pick("#appShell","#app","#main","#appRoot");
+  const btnLogout = pick("#btnLogout","#logoutBtn","#btnSignOut");
+  const userBadge = pick("#userBadge","#userEmailBadge","#userEmail");
+  const settingsEmail = pick("#settingsEmail","#accountEmail");
 
-    hide(loginCard);
-    show(appShell);
-    show(btnLogout);
+  const email = sess?.user?.email || "";
 
-    const email = sess.user?.email || "";
-    setText("#userBadge", email ? `로그인: ${email}` : "로그인됨");
-    return true;
+  if (!sess) {
+    show(loginCard);
+    hide(appShell);
+    hide(btnLogout);
+    setText(userBadge, "");
+    setText(settingsEmail, "-");
+    return false;
   }
+
+  hide(loginCard);
+  show(appShell);
+  show(btnLogout);
+
+  setText(userBadge, email ? `로그인: ${email}` : "로그인됨");
+  setText(settingsEmail, email || "-");
+  return true;
+}
 
   function bindLogin() {
     onAny(["#btnSignIn","#btnLogin","#loginBtn"], "click", async () => {
@@ -170,7 +174,10 @@ if (!sess) {
     state.month = now.getMonth() + 1;
   }
 
-  function setTitle() { setText(pick("#ymTitle","#monthTitle","#monthLabel"), String(state.month)); }
+  function setTitle() {
+  setText(pick("#ymTitle","#monthTitle","#monthLabel"), `${state.month}월`);
+  setText(pick("#yearLabel","#yearText","#yyLabel"), String(state.year));
+}
 
   function renderCalendarGrid() {
     setTitle();
@@ -209,6 +216,7 @@ if (!sess) {
       const dots = document.createElement("div");
       dots.className = "day-dots";
       const date = isoDate(y, m, dayNum);
+      cell.setAttribute("data-iso", date);
       dots.setAttribute("data-date", date);
 
       cell.appendChild(top);
@@ -255,7 +263,7 @@ if (!sess) {
       dotsEl.textContent = "";
       dotsEl.classList.remove("count-1", "count-2", "count-3p");
 
-      const ids = iso ? (state.logsByDate.get(iso) || []) : [];
+      const ids = iso ? (state.logsByDate[iso] || []) : [];
       const shown = ids.slice(0, 6);
 
       if (!shown.length) return;
@@ -430,46 +438,40 @@ if (!sess) {
   }
 
   async function createHabit() {
-    if (!state.session) return;
+  if (!state.session) return;
 
-    const userId = state.session.user.id;
+  const userId = state.session.user.id;
 
-    const title = ($("#habitTitle").value || "").trim();
-    const emoji = ($("#habitEmoji").value || "").trim() || "✅";
-    const color = ($("#habitColor").value || "").trim() || "#FF9500";
-    const period_unit = $("#habitUnit").value;
-    const period_value = Math.max(1, parseInt($("#habitUnitValue").value, 10) || 1);
-    const target_count = Math.max(1, parseInt($("#habitTarget").value, 10) || 1);
+  const title = (q("#habitTitle")?.value || "").trim();
+  const emoji = (q("#habitIcon")?.value || "✅").trim() || "✅";
 
-    if (!title) { alert("제목부터 써라."); return; }
+  // index.html에는 상세 옵션 UI가 없어서, DB 컬럼 기본값으로 박는다.
+  const payload = {
+    user_id: userId,
+    title,
+    emoji,
+    icon: emoji, // icon NOT NULL 대응
+    color: "#FF9500",
+    period_unit: "day",
+    period_value: 1,
+    target_count: 1,
+    frequency_days: 1,
+    is_active: true,
+  };
 
-    let frequency_days = period_value;
-    if (period_unit === "week") frequency_days = 7 * period_value;
-    if (period_unit === "month") frequency_days = 30 * period_value;
+  if (!title) { alert("제목부터 써라."); return; }
 
-    const payload = {
-      user_id: userId,
-      title,
-      emoji,
-      icon: emoji, // icon NOT NULL 대응
-      color,
-      period_unit,
-      period_value,
-      target_count,
-      frequency_days,
-      is_active: true,
-    };
+  const { error } = await sb.from("habits").insert(payload);
+  if (error) throw error;
 
-    const { error } = await sb.from("habits").insert(payload);
-    if (error) throw error;
+  const titleEl = q("#habitTitle");
+  if (titleEl) titleEl.value = "";
+  closeAllModals();
+  await reloadAll();
+}
 
-    $("#habitTitle").value = "";
-    closeAllModals();
-    await reloadAll();
-  }
-
-  // -----------------------------
-  // Month nav
+// -----------------------------
+// Month nav
   // -----------------------------
   async function gotoPrevMonth() {
     if (state.month === 1) { state.month = 12; state.year -= 1; }
@@ -491,6 +493,9 @@ if (!sess) {
   function bindUI() {
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
 
+    on("#btnSettings", "click", () => openModal("#settingsModal"));
+    on("#btnOpenProgress", "click", () => { closeAllModals(); openModal("#progressModal"); });
+
     onAny(["#btnSaveDay","#btnSave"], "click", () => {
       saveLogsForActiveDate().catch((e) => {
         console.error(e);
@@ -498,7 +503,7 @@ if (!sess) {
       });
     });
 
-    onAny(["#btnAddHabit","#btnAddGoal","#btnAdd","#btnAddTarget"], "click", () => openModal("#habitModal"));
+    onAny(["#btnOpenHabit","#btnAddHabit","#btnAddGoal","#btnAdd","#btnAddTarget"], "click", () => { closeAllModals(); openModal("#habitModal"); });
 
     on("#btnCreateHabit", "click", () => {
       createHabit().catch((e) => {
