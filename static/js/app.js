@@ -9,6 +9,11 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+  const THEME_DEFAULT_BG = "#f6f7fb";
+  const THEME_DEFAULT_TEXT = "#111111";
+  const THEME_KEY_BG = "theme_bg";
+  const THEME_KEY_TEXT = "theme_text";
+
   const state = {
     session: null,
     year: null,
@@ -18,6 +23,8 @@
     activeDate: null,
     holidaySet: new Set(), // YYYY-MM-DD
     holidayYearLoaded: null,
+    themeBg: THEME_DEFAULT_BG,
+    themeText: THEME_DEFAULT_TEXT,
   };
 
   // -----------------------------
@@ -47,12 +54,42 @@
   }
 
   // -----------------------------
+  // Theme
+  // -----------------------------
+  function applyTheme(bg, text) {
+    state.themeBg = bg || THEME_DEFAULT_BG;
+    state.themeText = text || THEME_DEFAULT_TEXT;
+
+    const root = document.documentElement;
+    root.style.setProperty("--bg", state.themeBg);
+    root.style.setProperty("--text", state.themeText);
+
+    try {
+      localStorage.setItem(THEME_KEY_BG, state.themeBg);
+      localStorage.setItem(THEME_KEY_TEXT, state.themeText);
+    } catch (_) { /* ignore */ }
+  }
+
+  function loadTheme() {
+    let bg = THEME_DEFAULT_BG;
+    let text = THEME_DEFAULT_TEXT;
+
+    try {
+      const b = localStorage.getItem(THEME_KEY_BG);
+      const t = localStorage.getItem(THEME_KEY_TEXT);
+      if (b && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(b)) bg = b;
+      if (t && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t)) text = t;
+    } catch (_) { /* ignore */ }
+
+    applyTheme(bg, text);
+  }
+
+  // -----------------------------
   // Holidays (KR) - best effort
   // -----------------------------
   async function ensureHolidays(year) {
     if (state.holidayYearLoaded === year && state.holidaySet.size) return;
 
-    // local cache
     const cacheKey = `holidays_kr_${year}`;
     try {
       const cached = localStorage.getItem(cacheKey);
@@ -64,7 +101,6 @@
       }
     } catch (_) { /* ignore */ }
 
-    // best-effort fetch (if blocked, app still works)
     try {
       const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/KR`;
       const res = await fetch(url, { method: "GET" });
@@ -77,11 +113,9 @@
       state.holidayYearLoaded = year;
 
       try { localStorage.setItem(cacheKey, JSON.stringify(dates)); } catch (_) { /* ignore */ }
-    } catch (e) {
-      // fallback: no holidays
+    } catch (_) {
       state.holidaySet = new Set();
       state.holidayYearLoaded = year;
-      // console.info("Holiday fetch skipped:", e?.message || e);
     }
   }
 
@@ -99,19 +133,16 @@
 
     const loginCard = $("#loginCard");
     const appShell = $("#appShell");
-    const btnLogout = $("#btnLogout");
 
     if (!sess) {
       show(loginCard);
       hide(appShell);
-      hide(btnLogout);
       $("#userBadge").textContent = "";
       return false;
     }
 
     hide(loginCard);
     show(appShell);
-    show(btnLogout);
 
     const email = sess.user?.email || "";
     $("#userBadge").textContent = email ? email : "";
@@ -134,7 +165,6 @@
       await afterLogin();
     });
 
-    // 회원가입 모달
     $("#btnSignUp").addEventListener("click", () => {
       const currentEmail = ($("#email").value || "").trim();
 
@@ -180,9 +210,38 @@
       $("#email").value = email;
       $("#password").value = "";
     });
+  }
+
+  // -----------------------------
+  // Settings UI
+  // -----------------------------
+  function bindSettingsUI() {
+    $("#btnSettings").addEventListener("click", () => {
+      // populate pickers with current theme
+      $("#themeBg").value = state.themeBg || THEME_DEFAULT_BG;
+      $("#themeText").value = state.themeText || THEME_DEFAULT_TEXT;
+      openModal("#settingsModal");
+    });
+
+    $("#themeBg").addEventListener("input", (e) => {
+      const v = e.target.value;
+      applyTheme(v, state.themeText);
+    });
+
+    $("#themeText").addEventListener("input", (e) => {
+      const v = e.target.value;
+      applyTheme(state.themeBg, v);
+    });
+
+    $("#btnThemeReset").addEventListener("click", () => {
+      applyTheme(THEME_DEFAULT_BG, THEME_DEFAULT_TEXT);
+      $("#themeBg").value = THEME_DEFAULT_BG;
+      $("#themeText").value = THEME_DEFAULT_TEXT;
+    });
 
     $("#btnLogout").addEventListener("click", async () => {
       await sb.auth.signOut();
+      closeAllModals();
       await ensureAuthedOrShowLogin();
     });
   }
@@ -201,7 +260,7 @@
     $("#ymTitle").textContent = `${state.month}월`;
   }
 
-  function markTodayAndSelected() {
+  function markTodaySelectedHoliday() {
     const now = new Date();
     const ty = now.getFullYear();
     const tm = now.getMonth() + 1;
@@ -232,7 +291,6 @@
     const firstDow = first.getDay(); // 0=sun
     const lastDay = new Date(y, m, 0).getDate();
 
-    // 6주(42칸) 고정
     const totalCells = 42;
     for (let i = 0; i < totalCells; i++) {
       const cell = document.createElement("div");
@@ -244,8 +302,7 @@
         continue;
       }
 
-      const dateObj = new Date(y, m - 1, dayNum);
-      const dow = dateObj.getDay();
+      const dow = new Date(y, m - 1, dayNum).getDay();
       cell.className = "day";
       if (dow === 0) cell.classList.add("sun");
       if (dow === 6) cell.classList.add("sat");
@@ -268,12 +325,12 @@
     }
 
     renderEmojis();
-    markTodayAndSelected();
+    markTodaySelectedHoliday();
   }
 
   function getEmojiByHabitId(habitId) {
     const h = state.habits.find((x) => x.id === habitId);
-    return (h?.emoji || h?.icon || "✅").trim() || "✅";
+    return (h?.emoji || "✅").trim() || "✅";
   }
 
   function renderEmojis() {
@@ -307,7 +364,7 @@
   async function loadHabits() {
     const { data, error } = await sb
       .from("habits")
-      .select("id,title,emoji,icon,color,is_active,created_at")
+      .select("id,title,emoji,icon,is_active,created_at")
       .eq("is_active", true)
       .order("created_at", { ascending: true });
 
@@ -317,7 +374,6 @@
       id: h.id,
       title: h.title,
       emoji: (h.emoji || h.icon || "✅").trim() || "✅",
-      color: h.color || "#111111",
     }));
   }
 
@@ -347,7 +403,7 @@
     await loadHabits();
     await loadLogsForMonth();
     renderEmojis();
-    markTodayAndSelected();
+    markTodaySelectedHoliday();
   }
 
   // -----------------------------
@@ -400,7 +456,7 @@
 
     $("#modalDateTitle").textContent = date;
     renderHabitChecklist(date);
-    markTodayAndSelected();
+    markTodaySelectedHoliday();
     openModal("#checkModal");
   }
 
@@ -438,7 +494,7 @@
 
     state.logsByDate[date] = [...incoming];
     renderEmojis();
-    markTodayAndSelected();
+    markTodaySelectedHoliday();
     closeAllModals();
   }
 
@@ -501,7 +557,7 @@
   // Bind UI
   // -----------------------------
   function bindUI() {
-    // close modal
+    // close modal (backdrop / x / data-close)
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => closeAllModals()));
 
     $("#btnSaveDay").addEventListener("click", () => {
@@ -546,9 +602,12 @@
   // Boot
   // -----------------------------
   async function main() {
+    loadTheme();        // ✅ 로그인 전에도 테마 적용
     initYearMonth();
     bindAuthUI();
+    bindSettingsUI();
     bindUI();
+
     await ensureHolidays(state.year);
     renderCalendarGrid();
 
