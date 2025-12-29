@@ -1,3 +1,11 @@
+/* PlanCal app.js v36
+   - Wrapped in IIFE to prevent 'already declared' even if loaded twice
+   - Console banner to verify correct version is running
+*/
+(() => {
+  "use strict";
+  console.log("[PlanCal] app.js v36 loaded");
+
 /* global supabase */
 (() => {
   const { createClient } = supabase;
@@ -545,4 +553,6 @@ if (!sess) {
       alert("초기화 실패. 콘솔 보자.");
     });
   });
+})();
+
 })();
