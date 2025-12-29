@@ -883,3 +883,83 @@ button{
 .calendar-shell{
   padding-bottom: 12px !important;
 }
+
+
+/* ===== v20: Glass TEXT for month label (letters themselves look frosted) =====
+   NOTE: This overrides the earlier "glass badge" approach.
+*/
+
+.month-title{
+  position: relative !important;
+  isolation: isolate !important;
+
+  /* actual glyphs are "glass" via gradient fill */
+  color: transparent !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #ffffff 88%, var(--text) 12%),
+    color-mix(in srgb, #ffffff 45%, var(--text) 55%)
+  ) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+
+  /* subtle depth like iOS */
+  filter: drop-shadow(0 14px 26px rgba(0,0,0,0.16)) !important;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,0.18),
+    0 10px 26px rgba(0,0,0,0.18) !important;
+}
+
+/* kill the badge panel from earlier versions */
+.month-title::before{
+  content: attr(data-text) !important; /* reuse for highlight text layer */
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+
+  /* glossy top highlight inside the letters */
+  color: transparent !important;
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.90) 0%,
+    rgba(255,255,255,0.26) 35%,
+    rgba(255,255,255,0.00) 62%
+  ) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  opacity: 0.62 !important;
+  z-index: 1 !important;
+  mix-blend-mode: screen !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* soft refraction blur layer */
+.month-title::after{
+  content: attr(data-text) !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+
+  color: rgba(255,255,255,0.55) !important;
+  filter: blur(10px) !important;
+  opacity: 0.22 !important;
+  mix-blend-mode: screen !important;
+
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* If data-text missing (edge cases), don't show duplicate layers */
+.month-title:not([data-text])::before,
+.month-title:not([data-text])::after{
+  content: none !important;
+}
