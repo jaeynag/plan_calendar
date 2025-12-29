@@ -4,7 +4,7 @@
 */
 (() => {
   "use strict";
-  console.log("[PlanCal] app.js v37 loaded");
+  console.log("[PlanCal] app.js v38 loaded");
 
 /* global supabase */
 (() => {
@@ -102,7 +102,7 @@ if (!sess) {
       show(loginCard);
       hide(appShell);
       hide(btnLogout);
-      setText(userBadge, "");
+      setText("#userBadge", "");
       return false;
     }
 
@@ -111,7 +111,7 @@ if (!sess) {
     show(btnLogout);
 
     const email = sess.user?.email || "";
-    setText(userBadge, email ? `로그인: ${email}` : "로그인됨");
+    setText("#userBadge", email ? `로그인: ${email}` : "로그인됨");
     return true;
   }
 
