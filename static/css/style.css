@@ -793,3 +793,93 @@ button{
     0 0 0 5px var(--ring-soft),
     0 0 20px 5px var(--ring-glow);
 }
+
+
+/* ===== v19: Undo "too much glass" + restore iOS-like clarity =====
+   Goal: premium, but readable. No giant white sheet, no washed-out grid.
+*/
+
+/* 1) Remove grid glass slab pseudo-elements (they were making everything look blank) */
+.grid::before,
+.grid::after{
+  content: none !important;
+  display: none !important;
+}
+
+/* 2) Restore a clean calendar card + subtle separators */
+.grid{
+  padding: 0 !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+
+  /* subtle hairline separators like iOS */
+  gap: 1px !important;
+  background: color-mix(in srgb, var(--text) 7%, transparent) !important;
+}
+
+/* 3) Make day cells solid enough (no full transparency) */
+.day{
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--surface) 98%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 98%, transparent) 32%,
+      color-mix(in srgb, var(--surface2) 86%, transparent) 32%,
+      color-mix(in srgb, var(--surface2) 86%, transparent) 100%
+    ) !important;
+}
+
+/* empty cells: quieter */
+.day.empty{
+  background: color-mix(in srgb, var(--surface2) 70%, transparent) !important;
+}
+
+/* 4) Month glass badge: smaller + not blocking weekdays */
+.month-title{
+  padding: 6px 12px !important;
+  min-width: 0 !important;
+}
+
+.month-title::before{
+  inset: -2px -6px !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--surface) 18%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--surface) 26%, transparent) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.14) !important;
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .month-title::before{
+    -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
+    backdrop-filter: blur(14px) saturate(150%) !important;
+  }
+}
+
+.month-title::after{
+  inset: -2px -6px !important;
+  border-radius: 18px !important;
+  opacity: 0.38 !important;
+}
+
+/* 5) Selection: iOS-like subtle ring (no huge rectangle glow) */
+.day.selected{
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--text) 28%, transparent),
+    0 6px 16px rgba(0,0,0,0.16) !important;
+}
+
+.day.today{
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--text) 18%, transparent) !important;
+}
+
+/* 6) Slightly tighter cell padding so it feels less empty */
+:root{
+  --day-pad: 6px;
+  --icon-area: 46px;
+}
+
+/* 7) Ensure the calendar fills the card area nicely */
+.calendar-shell{
+  padding-bottom: 12px !important;
+}
