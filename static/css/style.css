@@ -1,8 +1,10 @@
-/* Plan Calendar style v24 (Glass Polish)
-   - "Glass on Glass" enhanced
-   - Day cells are more opaque for better distinction
-   - Initial cell height reduced (compact fit for 1 row of icons)
-   - Month title gets glass badge treatment
+/* Plan Calendar style v25 (Glass Text + Compact Flex Layout)
+   - Month Title: Pure Glass Text (No badge background)
+   - Day Cell: Starts extremely compact (approx 1 icon height)
+   - Icon Layout: 
+     1 -> 2 (Stack Vertically)
+     3 -> 4 (Wrap to Next Column)
+     Implemented via Flexbox Column Wrap + Fixed Max-Height constraint
 */
 
 :root{
@@ -25,8 +27,13 @@
   --header-h: 66px;
   --weekday-h: 34px;
 
-  /* Glass Layout Tunables */
-  --icon-area: 46px;
+  /* Icon Size Tunables */
+  --icon-size: 18px;
+  --icon-gap: 2px;
+  /* Max-height for icons container to force wrapping after 2 items:
+     (IconSize * 2) + Gap = 18*2 + 2 = 38px
+  */
+  --icon-area-h: 38px; 
 }
 
 *{ box-sizing: border-box; }
@@ -190,27 +197,42 @@ button{
   gap: 10px;
 }
 
-/* Glass Badge Month Title */
+/* ========================================================= */
+/* GLASS TEXT EFFECT (Month Title) */
+/* "글씨 그 자체가 유리질감이 나게" */
+/* ========================================================= */
 .month-title{
-  font-size: clamp(26px, 7vw, 32px); /* Slightly smaller to fit badge */
+  font-size: clamp(32px, 8.6vw, 44px);
   font-weight: 900;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
   line-height: 1;
+  padding: 0 10px;
+  min-width: 150px;
   text-align:center;
+
+  /* Transparent text fill */
+  color: rgba(255, 255, 255, 0.1); 
   
-  /* Badge properties */
-  padding: 8px 20px;
-  min-width: 120px;
-  border-radius: 999px;
-  
-  background: color-mix(in srgb, var(--surface) 30%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface) 40%, transparent);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  
-  color: var(--text);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+  /* Specular Highlight & Depth Shadow */
+  /* Top-left light, Bottom-right shadow */
+  text-shadow: 
+    1px 1px 0 rgba(255, 255, 255, 0.25), 
+    -1px -1px 0 rgba(0, 0, 0, 0.1),
+    0 20px 30px rgba(0,0,0,0.1);
+    
+  /* Blend mode to interact with background */
+  mix-blend-mode: hard-light;
+}
+
+/* If user theme is very light, we need inverted shadows to see the glass */
+@media (prefers-color-scheme: light) {
+  .month-title {
+     /* Darker glass for light mode */
+     color: rgba(0, 0, 0, 0.05);
+     text-shadow: 
+       -1px -1px 0 rgba(0,0,0,0.1),
+       1px 1px 0 rgba(255,255,255,0.6);
+  }
 }
 
 .navchev{
@@ -266,14 +288,12 @@ button{
   flex: 1;
   display:grid;
   grid-template-columns: repeat(7, 1fr);
-  /* Glass Plate Layout */
   gap: 6px; 
   padding: 8px;
   
-  /* Reduced min-height for compact starting look */
-  grid-auto-rows: minmax(52px, auto); 
+  /* Start rows extremely compact. Grow if needed. */
+  grid-auto-rows: minmax(min-content, auto); 
 
-  /* Glass Tray Effect */
   background: color-mix(in srgb, var(--surface) 10%, transparent);
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--text) 5%, transparent);
@@ -282,32 +302,27 @@ button{
   overflow: hidden;
   min-width: 0;
 
-  /* Blur behind the tray */
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* ---------- Day cell (Glass Plates) ---------- */
+/* ---------- Day cell (Compact Glass Plates) ---------- */
 .day{
-  /* More opaque for better distinction */
   background: color-mix(in srgb, var(--surface) 72%, transparent);
-  
-  /* Crisper border for separation */
   border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
   border-radius: 14px;
-  
-  box-shadow: 
-    0 4px 8px rgba(0,0,0,0.03),
-    inset 0 1px 0 rgba(255,255,255,0.15);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.15);
 
-  padding: 6px;
+  /* PADDING REDUCED: Compact fit */
+  padding: 4px;
+  
   display:flex;
   flex-direction: column;
-  justify-content: flex-start; /* Content starts from top */
-  gap: 4px;
+  justify-content: flex-start;
+  gap: 2px; /* Gap between Date number and Icons */
 
   min-width: 0;
-  min-height: 0;
+  min-height: 0; /* Let it shrink to content */
   overflow: hidden;
   touch-action: manipulation;
   transition: box-shadow 140ms ease, transform 120ms ease, background 140ms ease;
@@ -322,7 +337,7 @@ button{
   pointer-events: none;
 }
 
-/* Day Number: Subtle, Top Right */
+/* Day Number */
 .day-num{
   display:flex;
   justify-content:flex-end;
@@ -330,7 +345,10 @@ button{
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
+  
+  /* Minimal padding to sit tight at top right */
   padding: 2px 2px 0 0;
+  
   color: color-mix(in srgb, var(--text) 76%, transparent);
   opacity: 0.7;
 }
@@ -340,7 +358,6 @@ button{
 .day.holiday .day-num{ color: var(--holiday); opacity: 1; }
 
 .day.today{
-  /* Glowing glass edge */
   box-shadow: 
     inset 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent),
     0 4px 12px rgba(0,0,0,0.08);
@@ -356,45 +373,67 @@ button{
   transform: translateY(-1px);
 }
 
-/* ---------- Icons (Variable Grid) ---------- */
+/* ========================================================= */
+/* ICON LAYOUT LOGIC (Flex Column Wrap) */
+/* Requirements:
+   - 1 icon: Fits compact
+   - 2 icons: Stacks vertically (1 / 2)
+   - 3 icons: Wraps to right (1 3 / 2 4)
+*/
+/* ========================================================= */
 .day-dots{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: 24px; /* Fixed height per row */
-  gap: 4px;
-  align-content: start;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap; /* Wrap to next column if height exceeded */
+  
+  /* CRITICAL: Constrain height to exactly 2 rows + gap */
+  max-height: var(--icon-area-h); 
+  
+  gap: var(--icon-gap);
+  align-content: center; /* Center columns if multiple */
+  justify-content: flex-start;
 
-  margin-top: 2px;
-  min-height: 0;
-  overflow: visible; /* Allow overflow */
+  margin-top: 0;
+  width: 100%;
+  
+  /* Allow overflow if more than 4, but 4 is the visual sweet spot */
+  overflow: hidden; 
 }
 
-.day-dots.single{
-  grid-template-columns: 1fr;
-  grid-auto-rows: 40px;
+/* Remove grid classes from JS logic, use universal flex item styling */
+.day-dots.single, .day-dots.double {
+  /* No specific override needed for layout, flex handles it */
 }
 
+/* Icon Sizing */
 .icon-emoji{
-  font-size: 18px;
+  font-size: var(--icon-size);
   line-height: 1;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  text-align: center;
   filter: saturate(1.05);
 }
-.day-dots.single .icon-emoji{ font-size: 30px; }
 
 .icon-img{
-  width: 22px;
-  height: 22px;
-  border-radius: 8px;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  border-radius: 6px;
   object-fit: cover;
   display:block;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
-.day-dots.single .icon-img{
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-}
+
+/* Special Case: If there is ONLY 1 icon (class .single added by JS), make it bigger? 
+   User asked for "compact", so maybe keep it small or slightly bigger.
+   Let's keep it small to satisfy "More, more, more compact". 
+   If you want the single icon BIG, uncomment below.
+*/
+/*
+.day-dots.single .icon-emoji { font-size: 24px; width: 24px; height: 24px; }
+.day-dots.single .icon-img { width: 24px; height: 24px; }
+*/
+
 
 /* ---------- Modals ---------- */
 .modal.hidden{ display:none; }
