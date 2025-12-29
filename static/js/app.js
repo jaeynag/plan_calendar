@@ -536,6 +536,7 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
       const shown = uniqIds.slice(0, 6); // 2열 * 3줄
 
       if (shown.length === 1) el.classList.add("single");
+      else if (shown.length === 2) el.classList.add("double");
 
       const parts = [];
       for (const hid of shown) {
