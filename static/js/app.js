@@ -27,21 +27,33 @@
     themeText: THEME_DEFAULT_TEXT,
   };
 
+  // ---------- HTML escape (v5 누락 버그 픽스) ----------
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
   // ---------- color utils ----------
   function clamp01(x){ return Math.min(1, Math.max(0, x)); }
   function hexToRgb(hex){
     const h = String(hex || "").replace("#","").trim();
     if (h.length === 3){
-      const r = parseInt(h[0]+h[0], 16);
-      const g = parseInt(h[1]+h[1], 16);
-      const b = parseInt(h[2]+h[2], 16);
-      return {r,g,b};
+      return {
+        r: parseInt(h[0]+h[0], 16),
+        g: parseInt(h[1]+h[1], 16),
+        b: parseInt(h[2]+h[2], 16),
+      };
     }
     if (h.length === 6){
-      const r = parseInt(h.slice(0,2), 16);
-      const g = parseInt(h.slice(2,4), 16);
-      const b = parseInt(h.slice(4,6), 16);
-      return {r,g,b};
+      return {
+        r: parseInt(h.slice(0,2), 16),
+        g: parseInt(h.slice(2,4), 16),
+        b: parseInt(h.slice(4,6), 16),
+      };
     }
     return {r:17,g:17,b:17};
   }
@@ -58,7 +70,6 @@
     return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`;
   }
   function luminance({r,g,b}){
-    // relative luminance (sRGB)
     const f = (c) => {
       c /= 255;
       return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4);
@@ -68,7 +79,7 @@
   }
 
   // -----------------------------
-  // Theme (apply to whole UI, not only title)
+  // Theme (apply to whole UI)
   // -----------------------------
   function applyTheme(bgHex, textHex) {
     const bg = (bgHex || THEME_DEFAULT_BG).trim();
@@ -81,27 +92,24 @@
     const textRgb = hexToRgb(text);
     const isDarkBg = luminance(bgRgb) < 0.35;
 
-    // Surfaces: slightly lifted from bg
-    const lift = isDarkBg ? 0.10 : 0.35; // move toward white
-    const lift2 = isDarkBg ? 0.06 : 0.22;
     const white = {r:255,g:255,b:255};
 
-    const surface = mix(bgRgb, white, lift);
-    const surface2 = mix(bgRgb, white, lift2);
+    // surfaces from bg
+    const surface = mix(bgRgb, white, isDarkBg ? 0.10 : 0.35);
+    const surface2 = mix(bgRgb, white, isDarkBg ? 0.06 : 0.22);
 
-    // Day split: top a touch stronger (toward text), bottom a touch more airy (toward bg)
+    // split cell tones
     const cellTop = mix(surface, textRgb, isDarkBg ? 0.10 : 0.06);
     const cellBottom = mix(surface, bgRgb, isDarkBg ? 0.25 : 0.35);
 
-    // Borders/muted derived from text color
+    // borders / muted from text
     const border = rgba(textRgb, isDarkBg ? 0.18 : 0.10);
     const border2 = rgba(textRgb, isDarkBg ? 0.26 : 0.16);
     const muted = rgba(textRgb, isDarkBg ? 0.72 : 0.55);
+    const gear = rgba(textRgb, isDarkBg ? 0.86 : 0.72);
 
-    // Shadow
     const shadow = isDarkBg ? "0 10px 26px rgba(0,0,0,0.35)" : "0 8px 22px rgba(0,0,0,0.06)";
 
-    // Apply CSS vars
     const root = document.documentElement;
     root.style.setProperty("--bg", bg);
     root.style.setProperty("--text", text);
@@ -113,9 +121,7 @@
     root.style.setProperty("--border2", border2);
     root.style.setProperty("--muted", muted);
     root.style.setProperty("--shadow", shadow);
-
-    // Also tune gear icon fill via currentColor? easiest: set to text color alpha
-    root.style.setProperty("--gear", rgba(textRgb, isDarkBg ? 0.85 : 0.72));
+    root.style.setProperty("--gear", gear);
 
     try {
       localStorage.setItem(THEME_KEY_BG, bg);
@@ -154,7 +160,7 @@
 
     try {
       const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/KR`;
-      const res = await fetch(url, { method: "GET" });
+      const res = await fetch(url);
       if (!res.ok) throw new Error();
       const data = await res.json();
       const dates = (data || []).map((x) => x?.date).filter((x) => typeof x === "string");
@@ -197,16 +203,21 @@
     return true;
   }
 
+  // -----------------------------
+  // Modal helpers
+  // -----------------------------
+  function openModal(sel){ const el = $(sel); if (el) el.classList.remove("hidden"); }
+  function closeAllModals(){ $$(".modal").forEach((m) => m.classList.add("hidden")); }
+
+  // -----------------------------
+  // Auth UI
+  // -----------------------------
   function bindAuthUI() {
     $("#btnSignIn").addEventListener("click", async () => {
       $("#msg").textContent = "";
       const email = ($("#email").value || "").trim();
       const password = $("#password").value || "";
-
-      if (!email || !password) {
-        $("#msg").textContent = "이메일/비번부터 넣어.";
-        return;
-      }
+      if (!email || !password) { $("#msg").textContent = "이메일/비번부터 넣어."; return; }
 
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) { $("#msg").textContent = error.message; return; }
@@ -228,7 +239,6 @@
       const email = ($("#signupEmail").value || "").trim();
       const password = $("#signupPassword").value || "";
       const password2 = $("#signupPassword2").value || "";
-
       if (!email || !password || !password2) { $("#signupMsg").textContent = "메일/비번/비번확인까지 다 넣어."; return; }
       if (password.length < 6) { $("#signupMsg").textContent = "비번은 6자 이상으로."; return; }
       if (password !== password2) { $("#signupMsg").textContent = "비번이랑 비번확인이 안 맞는다."; return; }
@@ -249,21 +259,12 @@
   }
 
   // -----------------------------
-  // Modal helpers
-  // -----------------------------
-  function openModal(sel){ const el = $(sel); if (el) el.classList.remove("hidden"); }
-  function closeAllModals(){ $$(".modal").forEach((m) => m.classList.add("hidden")); }
-
-  // -----------------------------
   // Settings UI
   // -----------------------------
   function bindSettingsUI() {
     $("#btnSettings").addEventListener("click", async () => {
       await refreshSession();
-      const email = state.session?.user?.email || "-";
-      const emailEl = $("#settingsEmail");
-      if (emailEl) emailEl.textContent = email;
-
+      $("#settingsEmail").textContent = state.session?.user?.email || "-";
       $("#themeBg").value = state.themeBg || THEME_DEFAULT_BG;
       $("#themeText").value = state.themeText || THEME_DEFAULT_TEXT;
       openModal("#settingsModal");
@@ -406,7 +407,6 @@
       .select("id,title,emoji,icon,is_active,created_at")
       .eq("is_active", true)
       .order("created_at", { ascending: true });
-
     if (error) throw error;
 
     state.habits = (data || []).map((h) => ({
@@ -424,7 +424,6 @@
       .gte("check_date", startISO)
       .lt("check_date", endISO)
       .order("check_date", { ascending: true });
-
     if (error) throw error;
 
     const map = {};
@@ -451,6 +450,7 @@
     const checked = new Set(state.logsByDate[date] || []);
     const wrap = $("#habitList");
     wrap.innerHTML = "";
+
     state.habits.forEach((h) => {
       const row = document.createElement("label");
       row.className = "habit-row";
@@ -539,10 +539,7 @@
     const title = ($("#habitTitle").value || "").trim();
     const emoji = ($("#habitIcon").value || "💪").trim() || "💪";
 
-    if (!title) {
-      $("#habitMsg").textContent = "목표 이름부터 써라.";
-      return;
-    }
+    if (!title) { $("#habitMsg").textContent = "목표 이름부터 써라."; return; }
 
     const payload = { user_id: userId, title, emoji, icon: emoji, color: state.themeText || "#111111", is_active: true };
     const { error } = await sb.from("habits").insert(payload);
@@ -593,7 +590,7 @@
   }
 
   async function main() {
-    loadTheme(); // login before too
+    loadTheme();
     initYearMonth();
     bindAuthUI();
     bindSettingsUI();
