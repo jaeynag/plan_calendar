@@ -27,7 +27,7 @@
 
   /* Glass Layout Tunables */
   --icon-area: 46px;
-  --cell-min-h: 70px; /* baseline cell height (fits 1 icon) */
+  --cell-min-h: 74px; /* baseline cell height (fits 1 large icon) */
 }
 
 *{ box-sizing: border-box; }
@@ -371,6 +371,19 @@ button{
 .day-dots.single{
   grid-template-columns: 1fr;
   grid-auto-rows: 40px;
+}
+
+
+.day-dots.double{
+  grid-template-columns: 1fr;
+  grid-auto-rows: 40px;
+}
+
+.day-dots.double .icon-emoji{ font-size: 30px; }
+.day-dots.double .icon-img{
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
 }
 
 .icon-emoji{
@@ -755,5 +768,3 @@ button{
 @media (max-width: 520px){
   .progress-item .pi-text{ font-size: 12.5px; }
 }
-
-
