@@ -746,7 +746,7 @@ function applyProgressDeltas(addedIds, removedIds) {
 
     renderIcons();
     markTodaySelectedHoliday();
-    if (isProgressPanelExpanded()) await renderProgressPanel();
+    if (isProgressPanelExpanded()) { renderProgressPanel().catch(console.error); }
   }
 
   function getHabitById(habitId) {
