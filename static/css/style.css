@@ -1,4 +1,4 @@
-/* Plan Calendar style v33 (Glass Plates)
+/* Plan Calendar style v34 (Glass Plates)
    - "Glass on Glass": Semi-transparent floating cards
    - Removed split-color date headers to prevent content overlap
    - iOS system font stack
@@ -27,7 +27,7 @@
 
   /* Glass Layout Tunables */
   --icon-area: 46px;
-  --cell-min-h: 78px; /* baseline cell height (fits 1 icon) */
+  --cell-min-h: 92px; /* baseline cell height (fits 1 icon) */
 }
 
 *{ box-sizing: border-box; }
