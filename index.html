@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Plan Calendar</title>
-  <link rel="stylesheet" href="static/css/style.css?v=24" />
+  <link rel="stylesheet" href="static/css/style.css?v=26" />
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
@@ -130,7 +130,8 @@
 
         <label class="field">
           <span>아이콘(이모지)</span>
-          <select id="habitIcon">
+          <div class="icon-row">
+<select id="habitIcon">
             <option value="💪">💪</option>
             <option value="🏃">🏃</option>
             <option value="🧘">🧘</option>
@@ -145,6 +146,11 @@
             <option value="🎸">🎸</option>
             <option value="📷">📷</option>
           </select>
+            <input id="habitIconCustom" class="emoji-input" type="text" inputmode="text" placeholder="직접 입력" maxlength="16" autocomplete="off" />
+            <button id="btnAddEmoji" class="ghostbtn small" type="button">추가</button>
+          </div>
+          <div id="emojiHint" class="hint">이모지 한 개만 입력하고 “추가” 눌러. (예: 🥊, 🧠, 🧯, 📌)</div>
+
         </label>
 
         <label class="field">
@@ -277,6 +283,6 @@
     </div>
   </div>
 
-  <script src="static/js/app.js?v=24"></script>
+  <script src="static/js/app.js?v=26"></script>
 </body>
 </html>
