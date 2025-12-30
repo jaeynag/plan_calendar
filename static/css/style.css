@@ -28,7 +28,7 @@
   --icon-area: 46px;
 
   /* Day cell + Icon sizing */
-  --cell-min-h: 64px;
+  --cell-min-h: 58px;
   --icon-lg: 40px;
   --icon-md: 28px;
   --icon-sm: 18px;
@@ -150,11 +150,12 @@ button{
 
 /* ---------- Calendar shell ---------- */
 #appShell .calendar-shell{
-  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  height: auto;
+  min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   padding: 12px 12px 14px;
   display:flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
@@ -255,7 +256,7 @@ button{
 
 /* ---------- Grid (Glass Tray) ---------- */
 .grid{
-  flex: 1;
+  flex: 0 0 auto;
   display:grid;
   grid-template-columns: repeat(7, 1fr);
   /* Glass Plate Layout */
@@ -268,8 +269,7 @@ button{
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--text) 5%, transparent);
   box-shadow: inset 0 0 20px rgba(0,0,0,0.02);
-  
-  overflow: auto;
+  overflow: visible;
   min-width: 0;
 
   /* Blur behind the tray */
@@ -282,10 +282,11 @@ button{
   /* Individual Glass Card */
   background: color-mix(in srgb, var(--surface) 60%, transparent);
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--surface) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
   box-shadow: 
     0 4px 6px rgba(0,0,0,0.02),
-    inset 0 1px 0 rgba(255,255,255,0.1);
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 0 0 1px color-mix(in srgb, var(--text) 6%, transparent);
 
   padding: 5px;
   display:flex;
