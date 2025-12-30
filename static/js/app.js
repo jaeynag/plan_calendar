@@ -745,12 +745,154 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     return msg;
   }
 
+  
   // -----------------------------
+  // Custom Emoji (v26)
+  // -----------------------------
+  const CUSTOM_EMOJI_KEY = "custom_emojis_v1";
+  const CUSTOM_EMOJI_MAX = 60;
+
+  function loadCustomEmojis() {
+    try {
+      const raw = localStorage.getItem(CUSTOM_EMOJI_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .filter((x) => typeof x === "string")
+        .map((x) => x.trim())
+        .filter((x) => x.length);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveCustomEmojis(list) {
+    try {
+      const uniq = [];
+      const seen = new Set();
+      for (const e of list || []) {
+        const v = String(e || "").trim();
+        if (!v) continue;
+        if (seen.has(v)) continue;
+        seen.add(v);
+        uniq.push(v);
+        if (uniq.length >= CUSTOM_EMOJI_MAX) break;
+      }
+      localStorage.setItem(CUSTOM_EMOJI_KEY, JSON.stringify(uniq));
+    } catch (_) { }
+  }
+
+  function segmentGraphemes(str) {
+    try {
+      if (window.Intl && Intl.Segmenter) {
+        const seg = new Intl.Segmenter("en", { granularity: "grapheme" });
+        return Array.from(seg.segment(str), (x) => x.segment);
+      }
+    } catch (_) { }
+    return null; // fallback
+  }
+
+  function validateSingleEmoji(input) {
+    const s = String(input || "").trim();
+    if (!s) return { ok: false, reason: "비어있다." };
+
+    const clusters = segmentGraphemes(s);
+    const g = clusters ? clusters.join("") : s;
+
+    // 하나만 허용
+    if (clusters && clusters.length !== 1) return { ok: false, reason: "이모지 하나만 넣어라." };
+
+    // 키캡(1️⃣, #️⃣ 등) 허용
+    const keycap = /^[0-9#*]\uFE0F?\u20E3$/u;
+    if (keycap.test(g)) return { ok: true, value: g };
+
+    // 대표적인 이모지/깃발(Regional Indicator) 체크
+    const hasEmoji = /(\p{Extended_Pictographic}|\p{Regional_Indicator})/u;
+    if (!hasEmoji.test(g)) return { ok: false, reason: "이모지가 아니다." };
+
+    // 문자 섞이면 컷
+    if (/[A-Za-z\uAC00-\uD7A3]/u.test(g)) return { ok: false, reason: "문자 섞지 마." };
+
+    // 너무 길면 컷(ZWJ/VS 포함해서도 보통 8~12 안쪽)
+    if (g.length > 16) return { ok: false, reason: "너무 길다. 하나만." };
+
+    return { ok: true, value: g };
+  }
+
+  function ensureEmojiOptions() {
+    const sel = $("#habitIcon");
+    if (!sel) return;
+
+    const existing = new Set(Array.from(sel.options).map((o) => o.value));
+    const customs = loadCustomEmojis();
+    // 최신이 위로 오게: 저장된 순서 그대로(앞이 최신)
+    const toAdd = customs.filter((e) => e && !existing.has(e));
+
+    for (let i = toAdd.length - 1; i >= 0; i--) {
+      const e = toAdd[i];
+      const opt = document.createElement("option");
+      opt.value = e;
+      opt.textContent = e;
+      sel.insertBefore(opt, sel.firstChild);
+      existing.add(e);
+    }
+  }
+
+  function addCustomEmojiFromInput() {
+    const input = $("#habitIconCustom");
+    const sel = $("#habitIcon");
+    const hint = $("#emojiHint");
+    if (!input || !sel) return;
+
+    if (state.pendingPhotoBlob) {
+      if (hint) hint.textContent = "사진 아이콘 쓰는 중이다. 사진 지우고 이모지 해라.";
+      return;
+    }
+
+    const v = validateSingleEmoji(input.value);
+    if (!v.ok) {
+      if (hint) hint.textContent = v.reason || "안 된다.";
+      return;
+    }
+
+    const emoji = v.value;
+    // 저장(최신 앞으로)
+    const arr = loadCustomEmojis().filter((x) => x !== emoji);
+    arr.unshift(emoji);
+    saveCustomEmojis(arr);
+
+    // 셀렉트에 추가
+    const exists = Array.from(sel.options).some((o) => o.value === emoji);
+    if (!exists) {
+      const opt = document.createElement("option");
+      opt.value = emoji;
+      opt.textContent = emoji;
+      sel.insertBefore(opt, sel.firstChild);
+    }
+    sel.value = emoji;
+
+    input.value = "";
+    if (hint) hint.textContent = `추가됨: ${emoji}`;
+    // 너무 오래 남지 않게 원복
+    if (hint) {
+      setTimeout(() => {
+        // 모달 닫혔을 수도 있으니 존재 체크
+        const h = $("#emojiHint");
+        if (h) h.textContent = "이모지 한 개만 입력하고 “추가” 눌러. (예: 🥊, 🧠, 🧯, 📌)";
+      }, 1600);
+    }
+  }
+
+// -----------------------------
   // Habit icon exclusivity + crop
   // -----------------------------
   function setEmojiEnabled(enabled) {
     const sel = $("#habitIcon");
     if (sel) sel.disabled = !enabled;
+    const inp = $("#habitIconCustom");
+    if (inp) inp.disabled = !enabled;
+    const btn = $("#btnAddEmoji");
+    if (btn) btn.disabled = !enabled;
   }
   function setPhotoEnabled(enabled) {
     const inp = $("#habitPhoto");
@@ -781,6 +923,10 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     clearPhotoState();
     setEmojiEnabled(true);
     setPhotoEnabled(true);
+    const inp = $("#habitIconCustom");
+    if (inp) inp.value = "";
+    const hint = $("#emojiHint");
+    if (hint) hint.textContent = "이모지 한 개만 입력하고 “추가” 눌러. (예: 🥊, 🧠, 🧯, 📌)";
   }
 
   function openCropModal() {
@@ -1053,6 +1199,14 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
 
   // Bind UI
   function bindUI() {
+    // Custom emoji add
+    const addBtn = $("#btnAddEmoji");
+    const emojiInp = $("#habitIconCustom");
+    if (addBtn) addBtn.addEventListener("click", () => addCustomEmojiFromInput());
+    if (emojiInp) emojiInp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); addCustomEmojiFromInput(); }
+    });
+
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => {
       closeAllModals();
       closeCropModal();
