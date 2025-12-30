@@ -12,7 +12,7 @@
   // ✅ 버킷 이름: 사용자 말대로 habit_icon
   const ICON_BUCKET = "habit_icons";
 
-  console.log("[PlanCal] app.js v31 loaded");
+  console.log("[PlanCal] app.js v33 loaded");
 
   const THEME_DEFAULT_BG = "#f6f7fb";
   const THEME_DEFAULT_TEXT = "#111111";
@@ -59,6 +59,12 @@
     const [y, m, d] = String(ymd).split("-").map((x) => parseInt(x, 10));
     return new Date(y, (m || 1) - 1, d || 1);
   }
+  function formatDateKR(ymd) {
+    const dt = parseYmd(ymd);
+    if (Number.isNaN(dt.getTime())) return String(ymd || "");
+    return `${dt.getFullYear()}년 ${dt.getMonth() + 1}월 ${dt.getDate()}일`;
+  }
+
   function daysInclusive(startYmd, endYmd) {
     const a = parseYmd(startYmd);
     const b = parseYmd(endYmd);
@@ -233,7 +239,7 @@
       if (msgEl) msgEl.textContent = "";
       const email = ($("#email").value || "").trim();
       const password = $("#password").value || "";
-      if (!email || !password) { if (msgEl) msgEl.textContent = "이메일/비번부터 넣어."; return; }
+      if (!email || !password) { if (msgEl) msgEl.textContent = "이메일과 비밀번호를 입력해 주세요."; return; }
 
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) { if (msgEl) msgEl.textContent = error.message; return; }
@@ -261,9 +267,9 @@
       const email = ($("#signupEmail").value || "").trim();
       const password = $("#signupPassword").value || "";
       const password2 = $("#signupPassword2").value || "";
-      if (!email || !password || !password2) { if (signupMsgEl) signupMsgEl.textContent = "메일/비번/비번확인까지 다 넣어."; return; }
-      if (password.length < 6) { if (signupMsgEl) signupMsgEl.textContent = "비번은 6자 이상으로."; return; }
-      if (password !== password2) { if (signupMsgEl) signupMsgEl.textContent = "비번이랑 비번확인이 안 맞는다."; return; }
+      if (!email || !password || !password2) { if (signupMsgEl) signupMsgEl.textContent = "이메일, 비밀번호, 비밀번호 확인을 모두 입력해 주세요."; return; }
+      if (password.length < 6) { if (signupMsgEl) signupMsgEl.textContent = "비밀번호는 6자 이상으로 입력해 주세요."; return; }
+      if (password !== password2) { if (signupMsgEl) signupMsgEl.textContent = "비밀번호와 비밀번호 확인이 일치하지 않습니다."; return; }
 
       const { data, error } = await sb.auth.signUp({ email, password });
       if (error) { if (signupMsgEl) signupMsgEl.textContent = error.message; return; }
@@ -274,7 +280,7 @@
         return;
       }
 
-      $("#signupMsg").textContent = "가입은 됐는데 세션이 없다. Confirm email OFF 확인. 일단 로그인 눌러.";
+      $("#signupMsg").textContent = "회원가입은 완료되었지만 세션이 없습니다. Supabase Auth의 Confirm email 설정을 확인해 주세요. 우선 로그인해 주세요.";
       $("#email").value = email;
       $("#password").value = "";
     });
@@ -363,7 +369,7 @@ function isProgressPanelExpanded() {
 }
 
 function formatProgressLine(it) {
-  return `${it.title} · ${it.start} 시작 · 오늘까지 ${it.totalDays}일 중 ${it.done}회`;
+  return `${it.title} · ${formatDateKR(it.start)} 시작 · 오늘까지 ${it.totalDays}일 중 ${it.done}회 진행하셨습니다`;
 }
 
 function applyProgressDeltas(addedIds, removedIds) {
@@ -480,7 +486,7 @@ function applyProgressDeltas(addedIds, removedIds) {
         state.progressItems = [];
         const empty = document.createElement("div");
         empty.className = "progress-empty";
-        empty.textContent = "목표가 없다. 목표부터 추가해.";
+        empty.textContent = "등록된 목표가 없습니다. 먼저 목표를 추가해 주세요.";
         wrap.appendChild(empty);
         return;
       }
@@ -518,7 +524,7 @@ function applyProgressDeltas(addedIds, removedIds) {
       console.error(e);
       const empty = document.createElement("div");
       empty.className = "progress-empty";
-      empty.textContent = "진행상황 불러오다 터졌다. 콘솔 봐.";
+      empty.textContent = "진행 상황을 불러오는 중 오류가 발생했습니다. 콘솔을 확인해 주세요.";
       wrap.appendChild(empty);
     }
   }
@@ -545,7 +551,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     $("#progressList").innerHTML = "";
 
     if (!state.session) {
-      $("#progressMsg").textContent = "로그인부터 해.";
+      $("#progressMsg").textContent = "먼저 로그인해 주세요.";
       openModal("#progressModal");
       return;
     }
@@ -567,7 +573,7 @@ function applyProgressDeltas(addedIds, removedIds) {
       }));
 
       if (!list.length) {
-        $("#progressMsg").textContent = "목표가 없다. 목표부터 추가해.";
+        $("#progressMsg").textContent = "등록된 목표가 없습니다. 먼저 목표를 추가해 주세요.";
         openModal("#progressModal");
         return;
       }
@@ -634,7 +640,7 @@ function applyProgressDeltas(addedIds, removedIds) {
 
         const sub = document.createElement("div");
         sub.className = "progress-sub";
-        sub.textContent = `${start} ~ ${today}`;
+        sub.textContent = `${formatDateKR(start)} ~ ${formatDateKR(today)}`;
 
         right.appendChild(count);
         right.appendChild(sub);
@@ -648,7 +654,7 @@ function applyProgressDeltas(addedIds, removedIds) {
       openModal("#progressModal");
     } catch (e) {
       console.error(e);
-      $("#progressMsg").textContent = "진행상황 불러오다 터졌다. 콘솔 봐.";
+      $("#progressMsg").textContent = "진행 상황을 불러오는 중 오류가 발생했습니다. 콘솔을 확인해 주세요.";
       openModal("#progressModal");
     }
   }
@@ -886,7 +892,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     if (!state.session) return;
     const date = isoDate(state.year, state.month, dayNum);
     state.activeDate = date;
-    $("#modalDateTitle").textContent = date;
+    $("#modalDateTitle").textContent = formatDateKR(date);
     renderHabitChecklist(date);
     markTodaySelectedHoliday();
     openModal("#checkModal");
@@ -958,13 +964,13 @@ function applyProgressDeltas(addedIds, removedIds) {
     const lower = msg.toLowerCase();
 
     if (lower.includes("bucket not found") || lower.includes("no such bucket")) {
-      return `버킷(${ICON_BUCKET}) 못 찾는다. Supabase Storage에 버킷 이름 정확히 확인해.`;
+      return `버킷(${ICON_BUCKET})을(를) 찾을 수 없습니다. Supabase Storage에서 버킷 이름을 확인해 주세요.`;
     }
     if (lower.includes("row level security") || lower.includes("rls") || lower.includes("permission")) {
-      return "Storage RLS에 막혔다. storage.objects INSERT/SELECT 정책 필요.";
+      return "Storage RLS로 인해 차단되었습니다. storage.objects INSERT/SELECT 정책을 확인해 주세요.";
     }
     if (lower.includes("jwt") || lower.includes("auth")) {
-      return "인증이 꼬였다. 로그아웃 후 다시 로그인해봐.";
+      return "인증 상태에 문제가 있습니다. 로그아웃 후 다시 로그인해 주세요.";
     }
     return msg;
   }
@@ -1018,13 +1024,13 @@ function applyProgressDeltas(addedIds, removedIds) {
 
   function validateSingleEmoji(input) {
     const s = String(input || "").trim();
-    if (!s) return { ok: false, reason: "비어있다." };
+    if (!s) return { ok: false, reason: "입력값이 비어 있습니다." };
 
     const clusters = segmentGraphemes(s);
     const g = clusters ? clusters.join("") : s;
 
     // 하나만 허용
-    if (clusters && clusters.length !== 1) return { ok: false, reason: "이모지 하나만 넣어라." };
+    if (clusters && clusters.length !== 1) return { ok: false, reason: "이모지는 1개만 입력해 주세요." };
 
     // 키캡(1️⃣, #️⃣ 등) 허용
     const keycap = /^[0-9#*]\uFE0F?\u20E3$/u;
@@ -1032,13 +1038,13 @@ function applyProgressDeltas(addedIds, removedIds) {
 
     // 대표적인 이모지/깃발(Regional Indicator) 체크
     const hasEmoji = /(\p{Extended_Pictographic}|\p{Regional_Indicator})/u;
-    if (!hasEmoji.test(g)) return { ok: false, reason: "이모지가 아니다." };
+    if (!hasEmoji.test(g)) return { ok: false, reason: "이모지 형식이 아닙니다." };
 
     // 문자 섞이면 컷
-    if (/[A-Za-z\uAC00-\uD7A3]/u.test(g)) return { ok: false, reason: "문자 섞지 마." };
+    if (/[A-Za-z\uAC00-\uD7A3]/u.test(g)) return { ok: false, reason: "문자(글자)는 섞지 말아 주세요." };
 
     // 너무 길면 컷(ZWJ/VS 포함해서도 보통 8~12 안쪽)
-    if (g.length > 16) return { ok: false, reason: "너무 길다. 하나만." };
+    if (g.length > 16) return { ok: false, reason: "입력값이 너무 깁니다. 이모지 1개만 입력해 주세요." };
 
     return { ok: true, value: g };
   }
@@ -1069,13 +1075,13 @@ function applyProgressDeltas(addedIds, removedIds) {
     if (!input || !sel) return;
 
     if (state.pendingPhotoBlob) {
-      if (hint) hint.textContent = "사진 아이콘 쓰는 중이다. 사진 지우고 이모지 해라.";
+      if (hint) hint.textContent = "현재 사진 아이콘을 사용 중입니다. 사진을 제거하신 뒤 이모지를 선택해 주세요.";
       return;
     }
 
     const v = validateSingleEmoji(input.value);
     if (!v.ok) {
-      if (hint) hint.textContent = v.reason || "안 된다.";
+      if (hint) hint.textContent = v.reason || "처리할 수 없습니다.";
       return;
     }
 
@@ -1102,7 +1108,7 @@ function applyProgressDeltas(addedIds, removedIds) {
       setTimeout(() => {
         // 모달 닫혔을 수도 있으니 존재 체크
         const h = $("#emojiHint");
-        if (h) h.textContent = "이모지 한 개만 입력하고 “추가” 눌러. (예: 🥊, 🧠, 🧯, 📌)";
+        if (h) h.textContent = "이모지 1개만 입력하신 뒤 “추가”를 눌러 주세요. (예: 🥊, 🧠, 🧯, 📌)";
       }, 1600);
     }
   }
@@ -1150,7 +1156,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     const inp = $("#habitIconCustom");
     if (inp) inp.value = "";
     const hint = $("#emojiHint");
-    if (hint) hint.textContent = "이모지 한 개만 입력하고 “추가” 눌러. (예: 🥊, 🧠, 🧯, 📌)";
+    if (hint) hint.textContent = "이모지 1개만 입력하신 뒤 “추가”를 눌러 주세요. (예: 🥊, 🧠, 🧯, 📌)";
   }
 
   function openCropModal() {
@@ -1255,7 +1261,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     const title = ($("#habitTitle").value || "").trim();
     const emoji = ($("#habitIcon").value || "💪").trim() || "💪";
 
-    if (!title) { $("#habitMsg").textContent = "목표 이름부터 써라."; return; }
+    if (!title) { $("#habitMsg").textContent = "목표 이름을 입력해 주세요."; return; }
 
     let iconUrl = null;
 
@@ -1263,7 +1269,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     if (state.pendingPhotoBlob) {
       try {
         if (state.bucketOk === false) {
-          $("#habitMsg").textContent = `버킷(${ICON_BUCKET})이 없는 것 같다. Storage에서 버킷 이름 확인해.`;
+          $("#habitMsg").textContent = `버킷(${ICON_BUCKET})이 없는 것 같습니다. Storage에서 버킷 이름을 확인해 주세요.`;
           return;
         }
         iconUrl = await uploadIconBlob(userId, state.pendingPhotoBlob);
@@ -1306,7 +1312,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     if (!state.habits || state.habits.length === 0) {
       const empty = document.createElement("div");
       empty.className = "hint";
-      empty.textContent = "등록된 목표가 없다. 위에서 하나 추가해.";
+      empty.textContent = "등록된 목표가 없습니다. 위에서 목표를 추가해 주세요.";
       wrap.appendChild(empty);
       return;
     }
@@ -1350,7 +1356,7 @@ function applyProgressDeltas(addedIds, removedIds) {
       del.addEventListener("click", () => {
         deleteHabit(h.id).catch((e) => {
           console.error(e);
-          alert("삭제 실패. 콘솔 봐라.");
+          alert("삭제에 실패했습니다. 콘솔을 확인해 주세요.");
         });
       });
 
@@ -1376,7 +1382,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     const h = (state.habits || []).find((x) => x.id === habitId);
     const title = h?.title || "이 목표";
 
-    if (!confirm(`${title} 진짜 지울거냐? 기록도 같이 지워진다.`)) return;
+    if (!confirm(`${title} 목표를 삭제하시겠습니까? 체크 기록도 함께 삭제됩니다.`)) return;
 
     $("#habitMsg").textContent = "";
 
@@ -1395,7 +1401,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     // 2) delete habit row (habit_logs cascade)
     const { error } = await sb.from("habits").delete().eq("id", habitId);
     if (error) {
-      $("#habitMsg").textContent = `삭제 권한이 없다. Supabase RLS(delete policy) 확인해. (${error.message})`;
+      $("#habitMsg").textContent = `삭제 권한이 없습니다. Supabase RLS(delete policy)를 확인해 주세요. (${error.message})`;
       throw error;
     }
 
@@ -1442,15 +1448,15 @@ function applyProgressDeltas(addedIds, removedIds) {
     }));
 
     $("#btnSaveDay").addEventListener("click", () => {
-      saveLogsForActiveDate().catch((e) => { console.error(e); alert("저장 실패. 콘솔 보자."); });
+      saveLogsForActiveDate().catch((e) => { console.error(e); alert("저장에 실패했습니다. 콘솔을 확인해 주세요."); });
     });
 
     $("#btnCreateHabit").addEventListener("click", () => {
-      createHabit().catch((e) => { console.error(e); alert("목표 추가 실패. 콘솔 보자."); });
+      createHabit().catch((e) => { console.error(e); alert("목표 추가에 실패했습니다. 콘솔을 확인해 주세요."); });
     });
 
-    $("#btnPrev").addEventListener("click", () => gotoPrevMonth().catch((e) => { console.error(e); alert("이동 실패"); }));
-    $("#btnNext").addEventListener("click", () => gotoNextMonth().catch((e) => { console.error(e); alert("이동 실패"); }));
+    $("#btnPrev").addEventListener("click", () => gotoPrevMonth().catch((e) => { console.error(e); alert("이동에 실패했습니다."); }));
+    $("#btnNext").addEventListener("click", () => gotoNextMonth().catch((e) => { console.error(e); alert("이동에 실패했습니다."); }));
 
     // ✅ 사진 고르면 이모지 잠그고(중복 방지), 크롭 모달 오픈
     $("#habitPhoto").addEventListener("change", async (e) => {
@@ -1464,7 +1470,7 @@ function applyProgressDeltas(addedIds, removedIds) {
         await openCropperForFile(file);
       } catch (err) {
         console.error(err);
-        $("#habitMsg").textContent = "사진 열기 실패. 다른 사진으로 해봐.";
+        $("#habitMsg").textContent = "사진을 여는 데 실패했습니다. 다른 사진으로 다시 시도해 주세요.";
         setEmojiEnabled(true);
       }
     });
@@ -1506,7 +1512,7 @@ function applyProgressDeltas(addedIds, removedIds) {
         closeCropModal();
       } catch (e) {
         console.error(e);
-        $("#cropMsg").textContent = "크롭 적용 실패. 다시 해봐.";
+        $("#cropMsg").textContent = "크롭 적용에 실패했습니다. 다시 시도해 주세요.";
       }
     });
 
@@ -1555,6 +1561,6 @@ function applyProgressDeltas(addedIds, removedIds) {
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    main().catch((e) => { console.error(e); alert("초기화 실패. 콘솔 보자."); });
+    main().catch((e) => { console.error(e); alert("초기화에 실패했습니다. 콘솔을 확인해 주세요."); });
   });
 })();
