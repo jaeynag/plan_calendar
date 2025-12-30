@@ -27,7 +27,7 @@
 
   /* Glass Layout Tunables */
   --icon-area: 46px;
-  --cell-min-h: 92px; /* baseline cell height (fits 1 icon) */
+  --cell-min-h: 80px; /* baseline cell height (fits 1 icon) */
 }
 
 *{ box-sizing: border-box; }
@@ -755,3 +755,4 @@ button{
 @media (max-width: 520px){
   .progress-item .pi-text{ font-size: 12.5px; }
 }
+
