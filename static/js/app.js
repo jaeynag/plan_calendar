@@ -311,6 +311,150 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
   }
 
   // -----------------------------
+  // Progress panel (bottom, collapsible)
+  // -----------------------------
+  function setProgressPanelExpanded(expanded) {
+    const panel = $("#progressPanel");
+    const btn = $("#btnProgressToggle");
+    if (!panel || !btn) return;
+
+    panel.classList.toggle("collapsed", !expanded);
+    btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+    const body = panel.querySelector(".progress-body");
+    if (body) body.setAttribute("aria-hidden", expanded ? "false" : "true");
+  }
+
+  function parseISODate(iso) {
+    // local midnight to avoid TZ drift
+    return new Date(`${iso}T00:00:00`);
+  }
+
+  function diffDaysInclusive(startISO, endISO) {
+    const a = parseISODate(startISO);
+    const b = parseISODate(endISO);
+    const ms = b.getTime() - a.getTime();
+    const days = Math.floor(ms / 86400000);
+    return days + 1; // inclusive
+  }
+
+  function addDaysISO(iso, days) {
+    const d = parseISODate(iso);
+    d.setDate(d.getDate() + days);
+    return toDateOnlyStr(d);
+  }
+
+  async function fetchProgressSummaries() {
+    // state.habits는 reloadAll()에서 이미 채워짐. 그래도 안전하게 세션 갱신.
+    await refreshSession();
+
+    const list = (state.habits || []).map((h) => ({
+      id: h.id,
+      title: h.title,
+      emoji: (h.emoji || "✅").trim() || "✅",
+      start_date: h.start_date || null,
+    }));
+
+    if (!list.length) return [];
+
+    const today = toDateOnlyStr(new Date());
+    const minStart = list
+      .map((h) => h.start_date)
+      .filter(Boolean)
+      .sort()[0] || today;
+
+    // today 포함하려면 end를 tomorrow로 잡는 게 깔끔함
+    const endISO = addDaysISO(today, 1);
+
+    let q = sb
+      .from("habit_logs")
+      .select("habit_id,check_date")
+      .gte("check_date", minStart)
+      .lt("check_date", endISO);
+
+    const userId = state.session?.user?.id;
+    if (userId) q = q.eq("user_id", userId);
+
+    const { data: logs, error: le } = await q;
+    if (le) throw le;
+
+    const counts = {};
+    for (const r of (logs || [])) {
+      const hid = r.habit_id;
+      counts[hid] = (counts[hid] || 0) + 1;
+    }
+
+    return list.map((h) => {
+      const start = h.start_date || today;
+      const totalDays = diffDaysInclusive(start, today);
+      const done = counts[h.id] || 0;
+      return {
+        id: h.id,
+        title: h.title,
+        emoji: h.emoji,
+        start,
+        totalDays,
+        done,
+      };
+    });
+  }
+
+  async function renderProgressPanel() {
+    const wrap = $("#progressPanelList");
+    if (!wrap) return;
+
+    wrap.innerHTML = "";
+
+    try {
+      const items = await fetchProgressSummaries();
+      if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "progress-empty";
+        empty.textContent = "목표가 없다. 목표부터 추가해.";
+        wrap.appendChild(empty);
+        return;
+      }
+
+      for (const it of items) {
+        const row = document.createElement("div");
+        row.className = "progress-item";
+
+        const emo = document.createElement("div");
+        emo.className = "pi-emoji";
+        emo.textContent = it.emoji;
+
+        const txt = document.createElement("div");
+        txt.className = "pi-text";
+        txt.textContent = `${it.title} · ${it.start} 시작 · 오늘까지 ${it.totalDays}일 중 ${it.done}회`;
+
+        row.appendChild(emo);
+        row.appendChild(txt);
+        wrap.appendChild(row);
+      }
+    } catch (e) {
+      console.error(e);
+      const empty = document.createElement("div");
+      empty.className = "progress-empty";
+      empty.textContent = "진행상황 불러오다 터졌다. 콘솔 봐.";
+      wrap.appendChild(empty);
+    }
+  }
+
+  async function toggleProgressPanel() {
+    const panel = $("#progressPanel");
+    if (!panel) return;
+
+    const isCollapsed = panel.classList.contains("collapsed");
+    if (isCollapsed) {
+      setProgressPanelExpanded(true);
+      await renderProgressPanel();
+    } else {
+      setProgressPanelExpanded(false);
+    }
+  }
+
+
+  // -----------------------------
   // Progress
   // -----------------------------
   async function openProgress() {
@@ -485,7 +629,7 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     const weeks = computeWeeksInMonth(y, m);
     const totalCells = weeks * 7;
 
-    grid.style.gridTemplateRows = `repeat(${weeks}, minmax(64px, auto))`;
+    grid.style.gridTemplateRows = `repeat(${weeks}, 1fr)`;
 
     for (let i = 0; i < totalCells; i++) {
       const cell = document.createElement("div");
@@ -533,20 +677,13 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
       if (!ids.length) { el.innerHTML = ""; return; }
 
       const uniqIds = Array.from(new Set(ids));
-      const shown = uniqIds.slice(0, 4); // 최대 4개(2x2)까지만 깔끔하게
-
-      // 3~4개일 때: 3번째/4번째가 오른쪽 컬럼에 오도록 순서 재배치
-      let shownOrdered = shown;
-      if (shown.length >= 3) {
-        const a = shown[0], b = shown[1], c = shown[2], d = shown[3];
-        shownOrdered = shown.length === 3 ? [a, c, b] : [a, c, b, d];
-      }
-
+      const shown = uniqIds.slice(0, 6); // 2열 * 3줄
 
       if (shown.length === 1) el.classList.add("single");
       else if (shown.length === 2) el.classList.add("double");
-      else if (shown.length >= 3) el.classList.add("compact");const parts = [];
-      for (const hid of shownOrdered) {
+
+      const parts = [];
+      for (const hid of shown) {
         const h = getHabitById(hid);
         if (h?.icon_url) {
           parts.push(`<img class="icon-img" src="${escapeHtml(h.icon_url)}" alt="" />`);
@@ -1205,6 +1342,11 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     if (addBtn) addBtn.addEventListener("click", () => addCustomEmojiFromInput());
     if (emojiInp) emojiInp.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); addCustomEmojiFromInput(); }
+    });
+    // Progress panel toggle
+    const btnProg = $("#btnProgressToggle");
+    if (btnProg) btnProg.addEventListener("click", () => {
+      toggleProgressPanel().catch((e) => { console.error(e); });
     });
 
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => {
