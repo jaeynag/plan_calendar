@@ -28,7 +28,7 @@
   --icon-area: 46px;
 
   /* Day cell + Icon sizing */
-  --cell-min-h: 58px;
+  --cell-min-h: 64px;
   --icon-lg: 40px;
   --icon-md: 28px;
   --icon-sm: 18px;
@@ -150,12 +150,11 @@ button{
 
 /* ---------- Calendar shell ---------- */
 #appShell .calendar-shell{
-  height: auto;
-  min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   padding: 12px 12px 14px;
   display:flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
 
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
@@ -256,7 +255,7 @@ button{
 
 /* ---------- Grid (Glass Tray) ---------- */
 .grid{
-  flex: 0 0 auto;
+  flex: 1;
   display:grid;
   grid-template-columns: repeat(7, 1fr);
   /* Glass Plate Layout */
@@ -269,7 +268,8 @@ button{
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--text) 5%, transparent);
   box-shadow: inset 0 0 20px rgba(0,0,0,0.02);
-  overflow: visible;
+  
+  overflow: auto;
   min-width: 0;
 
   /* Blur behind the tray */
@@ -282,11 +282,10 @@ button{
   /* Individual Glass Card */
   background: color-mix(in srgb, var(--surface) 60%, transparent);
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface) 40%, transparent);
   box-shadow: 
     0 4px 6px rgba(0,0,0,0.02),
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 0 0 1px color-mix(in srgb, var(--text) 6%, transparent);
+    inset 0 1px 0 rgba(255,255,255,0.1);
 
   padding: 5px;
   display:flex;
@@ -642,3 +641,24 @@ button{
 }
 .zoomlabel{ font-size: 12px; color: color-mix(in srgb, var(--text) 55%, transparent); font-weight: 800; }
 #zoomRange{ width: 100%; }
+
+/* ---------- Emoji picker extras (v26) ---------- */
+.icon-row{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+}
+.icon-row select{
+  width: 84px;
+  flex: 0 0 auto;
+}
+.emoji-input{
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+.ghostbtn.small{
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 800;
+}
