@@ -12,7 +12,7 @@
   // ✅ 버킷 이름: 사용자 말대로 habit_icon
   const ICON_BUCKET = "habit_icons";
 
-  console.log("[PlanCal] app.js v33 loaded");
+  console.log("[PlanCal] app.js v34 loaded");
 
   const THEME_DEFAULT_BG = "#f6f7fb";
   const THEME_DEFAULT_TEXT = "#111111";
@@ -369,7 +369,7 @@ function isProgressPanelExpanded() {
 }
 
 function formatProgressLine(it) {
-  return `${it.title} · ${formatDateKR(it.start)} 시작 · 오늘까지 ${it.totalDays}일 중 ${it.done}회 진행하셨습니다`;
+  return `${it.title} · ${formatDateKR(it.start)} 시작 · 오늘까지 ${it.totalDays}일 중 ${it.done}회`;
 }
 
 function applyProgressDeltas(addedIds, removedIds) {
@@ -717,8 +717,9 @@ function applyProgressDeltas(addedIds, removedIds) {
 
     const weeks = computeWeeksInMonth(y, m);
     const totalCells = weeks * 7;
-
-    grid.style.gridTemplateRows = `repeat(${weeks}, 1fr)`;
+    // NOTE(v34): 주차(week) 행 높이를 강제로 동일하게 만들지 않습니다.
+    // 한 날짜칸이 커져도 해당 줄만 커지도록, CSS grid-auto-rows(minmax)로 처리합니다.
+    grid.style.gridTemplateRows = "";
 
     for (let i = 0; i < totalCells; i++) {
       const cell = document.createElement("div");
