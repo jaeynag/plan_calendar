@@ -344,14 +344,69 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     return toDateOnlyStr(d);
   }
 
+
+function isProgressPanelExpanded() {
+  const panel = $("#progressPanel");
+  return !!(panel && !panel.classList.contains("collapsed"));
+}
+
+function formatProgressLine(it) {
+  return `${it.title} · ${it.start} 시작 · 오늘까지 ${it.totalDays}일 중 ${it.done}회`;
+}
+
+function applyProgressDeltas(addedIds, removedIds) {
+  if (!isProgressPanelExpanded()) return;
+
+  if (!Array.isArray(state.progressItems) || state.progressItems.length === 0) {
+    // 캐시가 없으면 전체 리렌더
+    renderProgressPanel();
+    return;
+  }
+
+  const byId = new Map(state.progressItems.map((x) => [x.id, x]));
+  let touched = false;
+
+  for (const id of (addedIds || [])) {
+    const it = byId.get(id);
+    if (!it) continue;
+    it.done = (it.done || 0) + 1;
+    touched = true;
+  }
+  for (const id of (removedIds || [])) {
+    const it = byId.get(id);
+    if (!it) continue;
+    it.done = Math.max(0, (it.done || 0) - 1);
+    touched = true;
+  }
+
+  if (!touched) return;
+
+  const rows = $$("#progressPanelList .progress-item");
+  const affected = new Set([...(addedIds || []), ...(removedIds || [])]);
+
+  for (const rid of affected) {
+    const it = byId.get(rid);
+    if (!it) continue;
+
+    const row = rows.find((r) => r.getAttribute("data-habit-id") === rid);
+    if (!row) continue;
+
+    const txt = row.querySelector(".pi-text");
+    if (txt) txt.textContent = formatProgressLine(it);
+  }
+}
+
   async function fetchProgressSummaries() {
     // state.habits는 reloadAll()에서 이미 채워짐. 그래도 안전하게 세션 갱신.
     await refreshSession();
 
+    // state.habits 항목은 reloadAll()에서 emoji를 정규화해둠(emoji || icon || ✅)
+    // 하지만 등록 아이콘이 '이미지(icon_url)'일 수도 있으니 progress에서도 동일 규칙으로 렌더링한다.
     const list = (state.habits || []).map((h) => ({
       id: h.id,
       title: h.title,
       emoji: (h.emoji || "✅").trim() || "✅",
+      icon_url: h.icon_url || null,
       start_date: h.start_date || null,
     }));
 
@@ -392,6 +447,7 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
         id: h.id,
         title: h.title,
         emoji: h.emoji,
+        icon_url: h.icon_url,
         start,
         totalDays,
         done,
@@ -407,7 +463,9 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
 
     try {
       const items = await fetchProgressSummaries();
+      state.progressItems = items;
       if (!items.length) {
+        state.progressItems = [];
         const empty = document.createElement("div");
         empty.className = "progress-empty";
         empty.textContent = "목표가 없다. 목표부터 추가해.";
@@ -418,14 +476,27 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
       for (const it of items) {
         const row = document.createElement("div");
         row.className = "progress-item";
+        row.setAttribute("data-habit-id", it.id);
 
         const emo = document.createElement("div");
         emo.className = "pi-emoji";
-        emo.textContent = it.emoji;
+        // 등록 아이콘과 동일하게: icon_url 있으면 이미지, 아니면 emoji
+        if (it.icon_url) {
+          const img = document.createElement("img");
+          img.className = "icon-img";
+          img.src = it.icon_url;
+          img.alt = "";
+          emo.appendChild(img);
+        } else {
+          const span = document.createElement("span");
+          span.className = "icon-emoji";
+          span.textContent = it.emoji;
+          emo.appendChild(span);
+        }
 
         const txt = document.createElement("div");
         txt.className = "pi-text";
-        txt.textContent = `${it.title} · ${it.start} 시작 · 오늘까지 ${it.totalDays}일 중 ${it.done}회`;
+        txt.textContent = formatProgressLine(it);
 
         row.appendChild(emo);
         row.appendChild(txt);
@@ -663,6 +734,7 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
 
     renderIcons();
     markTodaySelectedHoliday();
+    if (isProgressPanelExpanded()) await renderProgressPanel();
   }
 
   function getHabitById(habitId) {
@@ -820,6 +892,8 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
     const toDelete = [...existing].filter((x) => !incoming.has(x));
     const toUpsert = [...incoming];
 
+    const toInsert = [...incoming].filter((x) => !existing.has(x));
+
     if (toDelete.length) {
       const { error } = await sb
         .from("habit_logs")
@@ -840,6 +914,7 @@ setTimeout(() => $("#habitTitle")?.focus(), 0);
 
     state.logsByDate[date] = [...incoming];
     renderIcons();
+    applyProgressDeltas(toInsert, toDelete);
     markTodaySelectedHoliday();
     closeAllModals();
   }
