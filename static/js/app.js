@@ -12,6 +12,8 @@
   // ✅ 버킷 이름: 사용자 말대로 habit_icon
   const ICON_BUCKET = "habit_icons";
 
+  console.log("[PlanCal] app.js v31 loaded");
+
   const THEME_DEFAULT_BG = "#f6f7fb";
   const THEME_DEFAULT_TEXT = "#111111";
   const THEME_KEY_BG = "theme_bg";
@@ -223,20 +225,27 @@
   // Auth UI
   // -----------------------------
   function bindAuthUI() {
-    $("#btnSignIn").addEventListener("click", async () => {
-      $("#msg").textContent = "";
+    const btnSignIn = $("#btnSignIn");
+    if (!btnSignIn) { console.error("[auth] #btnSignIn not found"); return; }
+    btnSignIn.addEventListener("click", async () => {
+      console.log("[auth] sign-in clicked");
+      const msgEl = $("#msg");
+      if (msgEl) msgEl.textContent = "";
       const email = ($("#email").value || "").trim();
       const password = $("#password").value || "";
-      if (!email || !password) { $("#msg").textContent = "이메일/비번부터 넣어."; return; }
+      if (!email || !password) { if (msgEl) msgEl.textContent = "이메일/비번부터 넣어."; return; }
 
       const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) { $("#msg").textContent = error.message; return; }
+      if (error) { if (msgEl) msgEl.textContent = error.message; return; }
       await afterLogin();
     });
 
-    $("#btnSignUp").addEventListener("click", () => {
+    const btnSignUp = $("#btnSignUp");
+    if (!btnSignUp) { console.error("[auth] #btnSignUp not found"); return; }
+    btnSignUp.addEventListener("click", () => {
       const currentEmail = ($("#email").value || "").trim();
-      $("#signupMsg").textContent = "";
+      const signupMsgEl = $("#signupMsg");
+      if (signupMsgEl) signupMsgEl.textContent = "";
       $("#signupEmail").value = currentEmail || "";
       $("#signupPassword").value = "";
       $("#signupPassword2").value = "";
@@ -244,17 +253,20 @@
       setTimeout(() => $("#signupEmail")?.focus(), 0);
     });
 
-    $("#btnDoSignUp").addEventListener("click", async () => {
-      $("#signupMsg").textContent = "";
+    const btnDoSignUp = $("#btnDoSignUp");
+    if (!btnDoSignUp) { console.error("[auth] #btnDoSignUp not found"); return; }
+    btnDoSignUp.addEventListener("click", async () => {
+      const signupMsgEl = $("#signupMsg");
+      if (signupMsgEl) signupMsgEl.textContent = "";
       const email = ($("#signupEmail").value || "").trim();
       const password = $("#signupPassword").value || "";
       const password2 = $("#signupPassword2").value || "";
-      if (!email || !password || !password2) { $("#signupMsg").textContent = "메일/비번/비번확인까지 다 넣어."; return; }
-      if (password.length < 6) { $("#signupMsg").textContent = "비번은 6자 이상으로."; return; }
-      if (password !== password2) { $("#signupMsg").textContent = "비번이랑 비번확인이 안 맞는다."; return; }
+      if (!email || !password || !password2) { if (signupMsgEl) signupMsgEl.textContent = "메일/비번/비번확인까지 다 넣어."; return; }
+      if (password.length < 6) { if (signupMsgEl) signupMsgEl.textContent = "비번은 6자 이상으로."; return; }
+      if (password !== password2) { if (signupMsgEl) signupMsgEl.textContent = "비번이랑 비번확인이 안 맞는다."; return; }
 
       const { data, error } = await sb.auth.signUp({ email, password });
-      if (error) { $("#signupMsg").textContent = error.message; return; }
+      if (error) { if (signupMsgEl) signupMsgEl.textContent = error.message; return; }
 
       if (data?.session) {
         closeAllModals();
@@ -1524,9 +1536,13 @@ function applyProgressDeltas(addedIds, removedIds) {
   async function main() {
     loadTheme();
     initYearMonth();
-    bindAuthUI();
-    bindSettingsUI();
-    bindUI();
+
+    // 로그인은 어떤 상황에서도 붙어야 한다.
+    try { bindAuthUI(); } catch (e) { console.error("[auth] bindAuthUI failed", e); }
+
+    // 아래 UI 바인딩에서 에러가 나도 로그인은 막지 않게 분리한다.
+    try { bindSettingsUI(); } catch (e) { console.error("[ui] bindSettingsUI failed", e); }
+    try { bindUI(); } catch (e) { console.error("[ui] bindUI failed", e); }
 
     await ensureHolidays(state.year);
     renderCalendarGrid();
