@@ -12,7 +12,7 @@
   // ✅ 버킷 이름: 사용자 말대로 habit_icon
   const ICON_BUCKET = "habit_icons";
 
-  console.log("[PlanCal] app.js v35 loaded");
+  console.log("[PlanCal] app.js v36 loaded");
 
   const THEME_DEFAULT_BG = "#f6f7fb";
   const THEME_DEFAULT_TEXT = "#111111";
@@ -36,6 +36,10 @@
     cropper: null,
     cropObjectUrl: null,
     bucketOk: null, // true/false/unknown
+
+    // habit icon edit
+    editingHabitId: null,
+    editingHasExistingPhoto: false,
   };
 
   // ---------- HTML escape ----------
@@ -63,6 +67,20 @@
     const dt = parseYmd(ymd);
     if (Number.isNaN(dt.getTime())) return String(ymd || "");
     return `${dt.getFullYear()}년 ${dt.getMonth() + 1}월 ${dt.getDate()}일`;
+  }
+
+  function normalizeStartDate(row) {
+    // created_at은 보통 timestamptz(UTC)라 KST 기준으로 하루 전으로 보일 수 있음.
+    // start_date가 없으면 created_at을 "로컬 날짜"로 변환해서 사용한다.
+    const sd = row && row.start_date;
+    if (sd && typeof sd === "string") return sd.slice(0, 10);
+
+    const ca = row && row.created_at;
+    if (ca) {
+      const d = new Date(ca);
+      if (!Number.isNaN(d.getTime())) return toDateOnlyStr(d);
+    }
+    return null;
   }
 
   function daysInclusive(startYmd, endYmd) {
@@ -309,11 +327,15 @@
 
     $("#btnOpenHabit").addEventListener("click", () => {
       closeAllModals();
+      clearHabitEditMode();
       resetHabitIconUI();
       $("#habitMsg").textContent = "";
+      setHabitModalTitle("목표 추가");
+      setHabitPrimaryButton("추가");
+      setHabitTitleEditable(true);
       openModal("#habitModal");
       renderHabitManageList();
-setTimeout(() => $("#habitTitle")?.focus(), 0);
+      setTimeout(() => $("#habitTitle")?.focus(), 0);
     });
 
     $("#btnOpenProgress").addEventListener("click", async () => {
@@ -425,7 +447,7 @@ function applyProgressDeltas(addedIds, removedIds) {
       title: h.title,
       emoji: (h.emoji || "✅").trim() || "✅",
       icon_url: h.icon_url || null,
-      start_date: h.start_date || null,
+      start_date: normalizeStartDate(h),
     }));
 
     if (!list.length) return [];
@@ -569,7 +591,7 @@ function applyProgressDeltas(addedIds, removedIds) {
         title: h.title,
         emoji: (h.emoji || h.icon || "✅").trim() || "✅",
         icon_url: h.icon_url || null,
-        start_date: h.start_date || (h.created_at ? String(h.created_at).slice(0, 10) : null),
+        start_date: normalizeStartDate(h),
       }));
 
       if (!list.length) {
@@ -803,7 +825,7 @@ function applyProgressDeltas(addedIds, removedIds) {
       title: h.title,
       emoji: (h.emoji || h.icon || "✅").trim() || "✅",
       icon_url: h.icon_url || null,
-      start_date: h.start_date || (h.created_at ? String(h.created_at).slice(0, 10) : null),
+      start_date: normalizeStartDate(h),
     }));
   }
 
@@ -1158,7 +1180,88 @@ function applyProgressDeltas(addedIds, removedIds) {
     if (inp) inp.value = "";
     const hint = $("#emojiHint");
     if (hint) hint.textContent = "이모지 1개만 입력하신 뒤 “추가”를 눌러 주세요. (예: 🥊, 🧠, 🧯, 📌)";
+    ensureEmojiOptions();
   }
+  function clearHabitEditMode() {
+    state.editingHabitId = null;
+    state.editingHasExistingPhoto = false;
+    // 편집 중 사진/크롭 상태는 같이 정리
+    clearPhotoState();
+    setEmojiEnabled(true);
+  }
+
+  function setHabitModalTitle(text) {
+    const t = document.querySelector("#habitModal .modal-title");
+    if (t) t.textContent = String(text || "");
+  }
+
+  function setHabitPrimaryButton(text) {
+    const b = $("#btnCreateHabit");
+    if (b) b.textContent = String(text || "");
+  }
+
+  function setHabitTitleEditable(editable) {
+    const inp = $("#habitTitle");
+    if (!inp) return;
+    inp.disabled = !editable;
+    if (editable && !inp.placeholder) inp.placeholder = "예: 운동, 독서, 공부";
+  }
+
+  function ensureEmojiOptionExists(emoji) {
+    const sel = $("#habitIcon");
+    if (!sel) return;
+    const v = (emoji || "").trim();
+    if (!v) return;
+    const exists = Array.from(sel.options).some((o) => o.value === v);
+    if (!exists) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      sel.insertBefore(opt, sel.firstChild);
+    }
+    sel.value = v;
+  }
+
+  function openEditHabitIcon(habit) {
+    if (!habit) return;
+
+    // 모달은 이미 열려 있을 수 있으니, 상태만 편집 모드로 전환
+    state.editingHabitId = habit.id;
+    state.editingHasExistingPhoto = !!habit.icon_url;
+
+    $("#habitMsg").textContent = "";
+    setHabitModalTitle("아이콘 변경");
+    setHabitPrimaryButton("저장");
+    setHabitTitleEditable(false);
+
+    // 제목은 보여주기만
+    $("#habitTitle").value = habit.title || "";
+
+    // 아이콘 UI 초기화 후 기존 값 반영
+    resetHabitIconUI();
+
+    if (habit.icon_url) {
+      // 기존이 사진 아이콘이면: 프리뷰 보여주고 이모지는 잠금
+      setEmojiEnabled(false);
+      state.editingHasExistingPhoto = true;
+
+      const img = $("#habitPhotoImg");
+      if (img) img.src = habit.icon_url;
+      $("#habitPhotoPreview")?.classList.remove("hidden");
+    } else {
+      // 기존이 이모지면: 해당 이모지를 선택
+      state.editingHasExistingPhoto = false;
+      setEmojiEnabled(true);
+      ensureEmojiOptionExists(habit.emoji || "✅");
+    }
+
+    // 사진 입력은 항상 가능(새 사진으로 교체 가능)
+    setPhotoEnabled(true);
+
+    // 모달이 닫혀 있으면 열기
+    if (!isOpenModal("#habitModal")) openModal("#habitModal");
+  }
+
 
   function openCropModal() {
     openModal("#cropModal");
@@ -1255,8 +1358,77 @@ function applyProgressDeltas(addedIds, removedIds) {
     return url;
   }
 
-  async function createHabit() {
+  
+  async function updateHabitIcon() {
+    if (!state.session || !state.editingHabitId) return;
+
+    const userId = state.session.user.id;
+    const habitId = state.editingHabitId;
+
+    const current = (state.habits || []).find((x) => x.id === habitId) || null;
+
+    // 이모지는 fallback으로 항상 유지
+    const emoji = ($("#habitIcon").value || current?.emoji || "✅").trim() || "✅";
+
+    let newIconUrl = null;
+
+    // 1) 새 사진을 선택해서 크롭 적용한 경우
+    if (state.pendingPhotoBlob) {
+      try {
+        if (state.bucketOk === false) {
+          $("#habitMsg").textContent = `버킷(${ICON_BUCKET})이 없는 것 같습니다. Storage에서 버킷 이름을 확인해 주세요.`;
+          return;
+        }
+        newIconUrl = await uploadIconBlob(userId, state.pendingPhotoBlob);
+      } catch (e) {
+        console.error(e);
+        $("#habitMsg").textContent = prettyStorageError(e);
+        return;
+      }
+    } else if (state.editingHasExistingPhoto && current?.icon_url) {
+      // 2) 기존 사진을 그대로 유지
+      newIconUrl = current.icon_url;
+    } else {
+      // 3) 이모지 사용(사진 없음)
+      newIconUrl = null;
+    }
+
+    // DB 업데이트
+    const payload = { emoji, icon: emoji, icon_url: newIconUrl };
+
+    let q = sb.from("habits").update(payload).eq("id", habitId);
+    // RLS가 user_id 조건을 요구할 수 있으니 같이 걸어둔다.
+    q = q.eq("user_id", userId);
+
+    const { error } = await q;
+    if (error) throw error;
+
+    // 기존 파일은 best-effort로 제거 (아이콘 교체/삭제 시)
+    if (current?.icon_url && current.icon_url !== newIconUrl) {
+      try {
+        const path = extractStoragePathFromPublicUrl(current.icon_url);
+        if (path) await sb.storage.from(ICON_BUCKET).remove([path]);
+      } catch (e) {
+        console.warn("icon remove failed (ignored):", e);
+      }
+    }
+
+    // 마무리
+    $("#habitMsg").textContent = "";
+    clearHabitEditMode();
+    resetHabitIconUI();
+    closeAllModals();
+    await reloadAll();
+  }
+
+async function createHabit() {
     if (!state.session) return;
+
+    // 편집 모드: 등록된 목표 아이콘 변경
+    if (state.editingHabitId) {
+      await updateHabitIcon();
+      return;
+    }
 
     const userId = state.session.user.id;
     const title = ($("#habitTitle").value || "").trim();
@@ -1284,6 +1456,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     const payload = {
       user_id: userId,
       title,
+      start_date: toDateOnlyStr(new Date()),
       emoji,       // fallback
       icon: emoji,
       icon_url: iconUrl,
@@ -1350,6 +1523,14 @@ function applyProgressDeltas(addedIds, removedIds) {
       const right = document.createElement("div");
       right.className = "habit-manage-right";
 
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "editbtn";
+      edit.textContent = "아이콘 변경";
+      edit.addEventListener("click", () => {
+        openEditHabitIcon(h);
+      });
+
       const del = document.createElement("button");
       del.type = "button";
       del.className = "delbtn";
@@ -1361,6 +1542,7 @@ function applyProgressDeltas(addedIds, removedIds) {
         });
       });
 
+      right.appendChild(edit);
       right.appendChild(del);
 
       row.appendChild(left);
@@ -1446,6 +1628,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     $$(".modal [data-close='1']").forEach((el) => el.addEventListener("click", () => {
       closeAllModals();
       closeCropModal();
+      clearHabitEditMode();
     }));
 
     $("#btnSaveDay").addEventListener("click", () => {
@@ -1479,6 +1662,7 @@ function applyProgressDeltas(addedIds, removedIds) {
     // ✅ 사진 지우면: 이모지 다시 활성화
     $("#btnClearPhoto").addEventListener("click", () => {
       clearPhotoState();
+      state.editingHasExistingPhoto = false;
       setEmojiEnabled(true);
     });
 
