@@ -550,6 +550,16 @@ button{
 }
 .delbtn:active{ transform: scale(0.985); }
 
+.editbtn{
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.055);
+  color: inherit;
+  font-weight: 800;
+}
+.editbtn:hover{ background: rgba(0,0,0,0.085); }
+.editbtn:active{ transform: scale(0.985); }
+
 /* ---------- Photo preview ---------- */
 .photo-preview{
   margin-top: 10px;
