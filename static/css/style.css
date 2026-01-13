@@ -375,15 +375,15 @@ button{
 
 
 .day-dots.double{
-  grid-template-columns: 1fr;
-  grid-auto-rows: 40px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 24px;
 }
 
-.day-dots.double .icon-emoji{ font-size: 30px; }
+.day-dots.double .icon-emoji{ font-size: 18px; }
 .day-dots.double .icon-img{
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
 }
 
 .icon-emoji{
@@ -778,3 +778,4 @@ button{
 @media (max-width: 520px){
   .progress-item .pi-text{ font-size: 12.5px; }
 }
+
