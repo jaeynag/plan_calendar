@@ -616,6 +616,34 @@ button{
   background: rgba(0,0,0,0.035);
 }
 
+/* 연필/톱니: 완전 투명 (박스 제거) */
+.habit-iconbtn.pencil,
+.habit-iconbtn.gear{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 연필/톱니: hover/active/focus에서도 배경 안 생기게 */
+.habit-iconbtn.pencil:hover,
+.habit-iconbtn.pencil:active,
+.habit-iconbtn.pencil:focus,
+.habit-iconbtn.pencil:focus-visible,
+.habit-iconbtn.gear:hover,
+.habit-iconbtn.gear:active,
+.habit-iconbtn.gear:focus,
+.habit-iconbtn.gear:focus-visible{
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* (선택) 클릭감만 남기기 */
+.habit-iconbtn.pencil:active,
+.habit-iconbtn.gear:active{
+  transform: scale(0.94);
+}
+
 .habit-row-menu{
   position: fixed;
   z-index: 9999;
