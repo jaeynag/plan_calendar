@@ -541,6 +541,95 @@ button{
 
 .habit-manage-right{ display:flex; align-items:center; gap: 8px; }
 
+.habit-title-wrap{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  min-width: 0;
+}
+.habit-title{
+  font-weight: 800;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.habit-title-input{
+  width: min(240px, 55vw);
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
+  outline: none;
+}
+
+.habit-iconbtn{
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: rgba(0,0,0,0.04);
+  color: inherit;
+  font-weight: 900;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height: 1;
+  user-select:none;
+}
+.habit-iconbtn:active{ transform: scale(0.985); }
+.habit-iconbtn:hover{ background: rgba(0,0,0,0.06); }
+
+.habit-iconbtn.gear{
+  margin-left: 2px;
+}
+.habit-iconbtn.pencil{
+  background: rgba(0,0,0,0.035);
+}
+
+.habit-iconbtn.save{
+  background: rgba(34,197,94,0.10);
+  border-color: rgba(34,197,94,0.20);
+}
+.habit-iconbtn.cancel{
+  background: rgba(0,0,0,0.035);
+}
+
+.habit-row-menu{
+  position: fixed;
+  z-index: 9999;
+  width: 180px;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--shadow);
+  display:flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.habit-row-menu-btn{
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: rgba(0,0,0,0.04);
+  font-weight: 900;
+  color: inherit;
+}
+.habit-row-menu-btn:hover{ background: rgba(0,0,0,0.06); }
+.habit-row-menu-btn:active{ transform: scale(0.985); }
+.habit-row-menu-btn.danger{
+  background: rgba(225,29,72,0.10);
+  color: #e11d48;
+  border-color: rgba(225,29,72,0.25);
+}
+
+
 .delbtn{
   padding: 10px 12px;
   border-radius: 14px;
@@ -778,4 +867,5 @@ button{
 @media (max-width: 520px){
   .progress-item .pi-text{ font-size: 12.5px; }
 }
+
 
