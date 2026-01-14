@@ -567,18 +567,35 @@ button{
 }
 
 .habit-iconbtn{
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: rgba(0,0,0,0.04);
+  border: none;
+  background: transparent;
   color: inherit;
   font-weight: 900;
+  font-size: 20px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   line-height: 1;
   user-select:none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.habit-iconbtn:hover{
+  background: rgba(0,0,0,0.05);
+}
+
+.habit-iconbtn:active{
+  background: rgba(0,0,0,0.08);
+  transform: scale(0.97);
+}
+
+.habit-iconbtn:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--border) 55%, transparent);
+  outline-offset: 2px;
 }
 .habit-iconbtn:active{ transform: scale(0.985); }
 .habit-iconbtn:hover{ background: rgba(0,0,0,0.06); }
@@ -591,10 +608,11 @@ button{
 }
 
 .habit-iconbtn.save{
+  border: 1px solid rgba(34,197,94,0.20);
   background: rgba(34,197,94,0.10);
-  border-color: rgba(34,197,94,0.20);
 }
 .habit-iconbtn.cancel{
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   background: rgba(0,0,0,0.035);
 }
 
