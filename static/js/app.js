@@ -1477,10 +1477,118 @@ async function createHabit() {
   // -----------------------------
   // Habit delete (manage list in 목표 추가)
   // -----------------------------
+  
+  // -----------------------------
+  // Habit manage (목표 추가 모달 내)
+  //  - 이름 수정: 연필 버튼
+  //  - 아이콘 변경/삭제: 톱니(⚙︎) 메뉴에서
+  // -----------------------------
+
+  let _openHabitMenuEl = null;
+  let _openHabitMenuCleanup = null;
+
+  function closeHabitRowMenu() {
+    try {
+      if (_openHabitMenuCleanup) _openHabitMenuCleanup();
+    } catch (_) { }
+    _openHabitMenuCleanup = null;
+    if (_openHabitMenuEl && _openHabitMenuEl.parentNode) {
+      _openHabitMenuEl.parentNode.removeChild(_openHabitMenuEl);
+    }
+    _openHabitMenuEl = null;
+  }
+
+  function openHabitRowMenu(habit, anchorBtn) {
+    closeHabitRowMenu();
+
+    const menu = document.createElement("div");
+    menu.className = "habit-row-menu";
+    menu.setAttribute("role", "menu");
+
+    const btnIcon = document.createElement("button");
+    btnIcon.type = "button";
+    btnIcon.className = "habit-row-menu-btn";
+    btnIcon.textContent = "아이콘 변경";
+    btnIcon.addEventListener("click", () => {
+      closeHabitRowMenu();
+      openEditHabitIcon(habit);
+    });
+
+    const btnDel = document.createElement("button");
+    btnDel.type = "button";
+    btnDel.className = "habit-row-menu-btn danger";
+    btnDel.textContent = "삭제";
+    btnDel.addEventListener("click", () => {
+      closeHabitRowMenu();
+      deleteHabit(habit.id).catch((e) => {
+        console.error(e);
+        alert("삭제에 실패했습니다. 콘솔을 확인해 주세요.");
+      });
+    });
+
+    menu.appendChild(btnIcon);
+    menu.appendChild(btnDel);
+
+    document.body.appendChild(menu);
+
+    // position (fixed)
+    const r = anchorBtn.getBoundingClientRect();
+    const pad = 8;
+    const w = 180;
+    const left = Math.min(window.innerWidth - w - pad, Math.max(pad, r.right - w));
+    const top = Math.min(window.innerHeight - 10, r.bottom + 8);
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+
+    _openHabitMenuEl = menu;
+
+    const onDocDown = (ev) => {
+      if (!menu.contains(ev.target) && ev.target !== anchorBtn) {
+        closeHabitRowMenu();
+      }
+    };
+    const onEsc = (ev) => {
+      if (ev.key === "Escape") closeHabitRowMenu();
+    };
+    const onResize = () => closeHabitRowMenu();
+
+    document.addEventListener("pointerdown", onDocDown, true);
+    document.addEventListener("keydown", onEsc, true);
+    window.addEventListener("resize", onResize, true);
+    window.addEventListener("scroll", onResize, true);
+
+    _openHabitMenuCleanup = () => {
+      document.removeEventListener("pointerdown", onDocDown, true);
+      document.removeEventListener("keydown", onEsc, true);
+      window.removeEventListener("resize", onResize, true);
+      window.removeEventListener("scroll", onResize, true);
+    };
+  }
+
+  async function updateHabitTitle(habitId, newTitle) {
+    if (!state.session) return;
+    const userId = state.session.user.id;
+    const title = (newTitle || "").trim();
+    if (!title) throw new Error("empty title");
+
+    // RLS 대비: user_id 조건 같이
+    const { error } = await sb
+      .from("habits")
+      .update({ title })
+      .eq("id", habitId)
+      .eq("user_id", userId);
+
+    if (error) throw error;
+
+    await reloadAll();
+  }
+
   function renderHabitManageList() {
     const wrap = $("#habitManageList");
     if (!wrap) return;
 
+    closeHabitRowMenu();
     wrap.innerHTML = "";
 
     if (!state.habits || state.habits.length === 0) {
@@ -1490,6 +1598,15 @@ async function createHabit() {
       wrap.appendChild(empty);
       return;
     }
+
+    const makeIconBtn = (text, aria) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "habit-iconbtn";
+      b.textContent = text;
+      b.setAttribute("aria-label", aria || "");
+      return b;
+    };
 
     state.habits.forEach((h) => {
       const row = document.createElement("div");
@@ -1513,37 +1630,90 @@ async function createHabit() {
         iconWrap.appendChild(emo);
       }
 
+      // title + pencil
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "habit-title-wrap";
+
       const title = document.createElement("span");
       title.className = "habit-title";
       title.textContent = h.title;
 
+      const pencil = makeIconBtn("✎", "이름 수정");
+      pencil.classList.add("pencil");
+
+      pencil.addEventListener("click", () => {
+        // 이미 편집중이면 무시
+        if (titleWrap.querySelector("input")) return;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = 40;
+        input.className = "habit-title-input";
+        input.value = h.title || "";
+
+        const btnSave = makeIconBtn("✓", "저장");
+        btnSave.classList.add("save");
+        const btnCancel = makeIconBtn("×", "취소");
+        btnCancel.classList.add("cancel");
+
+        const exit = () => {
+          closeHabitRowMenu();
+          titleWrap.innerHTML = "";
+          titleWrap.appendChild(title);
+          titleWrap.appendChild(pencil);
+        };
+
+        const doSave = async () => {
+          const next = (input.value || "").trim();
+          if (!next) { alert("목표 이름을 입력해 주세요."); return; }
+
+          btnSave.disabled = true;
+          btnCancel.disabled = true;
+          input.disabled = true;
+
+          try {
+            await updateHabitTitle(h.id, next);
+            // reloadAll로 state.habits 갱신됨
+            if (isOpenModal("#habitModal")) renderHabitManageList();
+          } catch (e) {
+            console.error(e);
+            alert("이름 수정에 실패했습니다. 콘솔을 확인해 주세요.");
+          } finally {
+            btnSave.disabled = false;
+            btnCancel.disabled = false;
+            input.disabled = false;
+          }
+        };
+
+        input.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") doSave();
+          if (ev.key === "Escape") exit();
+        });
+        btnSave.addEventListener("click", doSave);
+        btnCancel.addEventListener("click", exit);
+
+        titleWrap.innerHTML = "";
+        titleWrap.appendChild(input);
+        titleWrap.appendChild(btnSave);
+        titleWrap.appendChild(btnCancel);
+
+        setTimeout(() => { try { input.focus(); input.select(); } catch (_) { } }, 0);
+      });
+
+      titleWrap.appendChild(title);
+      titleWrap.appendChild(pencil);
+
       left.appendChild(iconWrap);
-      left.appendChild(title);
+      left.appendChild(titleWrap);
 
       const right = document.createElement("div");
       right.className = "habit-manage-right";
 
-      const edit = document.createElement("button");
-      edit.type = "button";
-      edit.className = "editbtn";
-      edit.textContent = "아이콘 변경";
-      edit.addEventListener("click", () => {
-        openEditHabitIcon(h);
-      });
+      const gear = makeIconBtn("⚙︎", "목표 설정");
+      gear.classList.add("gear");
+      gear.addEventListener("click", () => openHabitRowMenu(h, gear));
 
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "delbtn";
-      del.textContent = "삭제";
-      del.addEventListener("click", () => {
-        deleteHabit(h.id).catch((e) => {
-          console.error(e);
-          alert("삭제에 실패했습니다. 콘솔을 확인해 주세요.");
-        });
-      });
-
-      right.appendChild(edit);
-      right.appendChild(del);
+      right.appendChild(gear);
 
       row.appendChild(left);
       row.appendChild(right);
