@@ -898,11 +898,6 @@ function applyProgressDeltas(addedIds, removedIds) {
     });
   }
 
-      }
-      el.innerHTML = parts.join("");
-    });
-  }
-
   // -----------------------------
   // Supabase CRUD
   // -----------------------------
