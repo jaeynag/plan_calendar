@@ -386,6 +386,19 @@ button{
   border-radius: 8px;
 }
 
+
+/* 아이콘 정렬(기기별 폰트/이모지 렌더링 차이로 한쪽으로 치우쳐 보이는 현상 방지) */
+.day-dots .dot{
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+.icon-emoji{ display: block; }
+
+
 .icon-emoji{
   font-size: 18px;
   line-height: 1;
