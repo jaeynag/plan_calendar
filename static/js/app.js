@@ -16,8 +16,34 @@
 
   const THEME_DEFAULT_BG = "#f6f7fb";
   const THEME_DEFAULT_TEXT = "#111111";
-  const THEME_KEY_BG = "theme_bg";
-  const THEME_KEY_TEXT = "theme_text";
+
+  // 테마 저장: user_id별 localStorage 키
+  function themeKeyBg(uid) { return `theme_bg_${uid || "anon"}`; }
+  function themeKeyText(uid) { return `theme_text_${uid || "anon"}`; }
+
+  // 테마 저장: Supabase (저장 버튼 눌렀을 때만 upsert)
+  async function loadThemeFromDb(uid) {
+    if (!uid) return null;
+    const { data, error } = await sb
+      .from("user_settings")
+      .select("theme_bg, theme_text")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  }
+
+  async function saveThemeToDb(uid, bg, text) {
+    if (!uid) return;
+    const payload = {
+      user_id: uid,
+      theme_bg: bg,
+      theme_text: text,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await sb.from("user_settings").upsert(payload);
+    if (error) throw error;
+  }
 
   const state = {
     session: null,
@@ -127,7 +153,7 @@
   // -----------------------------
   // Theme
   // -----------------------------
-  function applyTheme(bgHex, textHex) {
+  function applyTheme(bgHex, textHex, uidForStorage = null) {
     const bg = (bgHex || THEME_DEFAULT_BG).trim();
     const text = (textHex || THEME_DEFAULT_TEXT).trim();
 
@@ -162,21 +188,21 @@
     root.style.setProperty("--shadow", shadow);
 
     try {
-      localStorage.setItem(THEME_KEY_BG, bg);
-      localStorage.setItem(THEME_KEY_TEXT, text);
+      localStorage.setItem(themeKeyBg(uidForStorage), bg);
+      localStorage.setItem(themeKeyText(uidForStorage), text);
     } catch (_) { }
   }
 
-  function loadTheme() {
+  function loadThemeLocal(uidForStorage = null) {
     let bg = THEME_DEFAULT_BG;
     let text = THEME_DEFAULT_TEXT;
     try {
-      const b = localStorage.getItem(THEME_KEY_BG);
-      const t = localStorage.getItem(THEME_KEY_TEXT);
+      const b = localStorage.getItem(themeKeyBg(uidForStorage));
+      const t = localStorage.getItem(themeKeyText(uidForStorage));
       if (b && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(b)) bg = b;
       if (t && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t)) text = t;
     } catch (_) { }
-    applyTheme(bg, text);
+    applyTheme(bg, text, uidForStorage);
   }
 
   // -----------------------------
@@ -310,19 +336,51 @@
   function bindSettingsUI() {
     $("#btnSettings").addEventListener("click", async () => {
       await refreshSession();
+      const uid = state.session?.user?.id || null;
       $("#settingsEmail").textContent = state.session?.user?.email || "-";
       $("#themeBg").value = state.themeBg || THEME_DEFAULT_BG;
       $("#themeText").value = state.themeText || THEME_DEFAULT_TEXT;
+      // uid 기준 localStorage 키로도 저장되게 일단 동기화
+      applyTheme(state.themeBg, state.themeText, uid);
       openModal("#settingsModal");
     });
 
-    $("#themeBg").addEventListener("input", (e) => applyTheme(e.target.value, state.themeText));
-    $("#themeText").addEventListener("input", (e) => applyTheme(state.themeBg, e.target.value));
+    $("#themeBg").addEventListener("input", (e) => {
+      const uid = state.session?.user?.id || null;
+      applyTheme(e.target.value, state.themeText, uid);
+    });
+    $("#themeText").addEventListener("input", (e) => {
+      const uid = state.session?.user?.id || null;
+      applyTheme(state.themeBg, e.target.value, uid);
+    });
 
     $("#btnThemeReset").addEventListener("click", () => {
-      applyTheme(THEME_DEFAULT_BG, THEME_DEFAULT_TEXT);
+      const uid = state.session?.user?.id || null;
+      applyTheme(THEME_DEFAULT_BG, THEME_DEFAULT_TEXT, uid);
       $("#themeBg").value = THEME_DEFAULT_BG;
       $("#themeText").value = THEME_DEFAULT_TEXT;
+    });
+
+
+    $("#btnThemeSave").addEventListener("click", async () => {
+      await refreshSession();
+      const uid = state.session?.user?.id || null;
+      if (!uid) {
+        setFoot("로그인 후 저장할 수 있어");
+        return;
+      }
+      const btn = $("#btnThemeSave");
+      btn.disabled = true;
+      setFoot("테마 저장중...");
+      try {
+        await saveThemeToDb(uid, state.themeBg, state.themeText);
+        setFoot("테마 저장 완료");
+      } catch (e) {
+        console.warn("theme save db failed:", e);
+        setFoot("테마 저장 실패");
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     $("#btnOpenHabit").addEventListener("click", () => {
@@ -1885,6 +1943,21 @@ async function createHabit() {
     const ok = await ensureAuthedOrShowLogin();
     if (!ok) return;
 
+    // 로그인 이후: DB에 저장된 테마가 있으면 적용 (없으면 현재 테마 유지)
+    const uid = state.session?.user?.id || null;
+    try {
+      const row = await loadThemeFromDb(uid);
+      if (row?.theme_bg && row?.theme_text) {
+        applyTheme(row.theme_bg, row.theme_text, uid);
+      } else {
+        // DB에 없으면 지금 테마를 uid 로컬키로만 보관
+        applyTheme(state.themeBg, state.themeText, uid);
+      }
+    } catch (e) {
+      console.warn("theme load db failed, keep local:", e);
+      applyTheme(state.themeBg, state.themeText, uid);
+    }
+
     await ensureHolidays(state.year);
     renderCalendarGrid();
 
@@ -1895,7 +1968,7 @@ async function createHabit() {
   }
 
   async function main() {
-    loadTheme();
+    loadThemeLocal(null);
     initYearMonth();
 
     // 로그인은 어떤 상황에서도 붙어야 한다.
@@ -1910,6 +1983,26 @@ async function createHabit() {
 
     const ok = await ensureAuthedOrShowLogin();
     if (!ok) return;
+
+    // 초기 로드(이미 로그인된 상태 포함): DB 테마 적용
+    {
+      const uid = state.session?.user?.id || null;
+      try {
+        const row = await loadThemeFromDb(uid);
+        if (row?.theme_bg && row?.theme_text) {
+          applyTheme(row.theme_bg, row.theme_text, uid);
+          const elBg = $("#themeBg");
+          const elText = $("#themeText");
+          if (elBg) elBg.value = row.theme_bg;
+          if (elText) elText.value = row.theme_text;
+        } else {
+          applyTheme(state.themeBg, state.themeText, uid);
+        }
+      } catch (e) {
+        console.warn("theme load db failed (startup):", e);
+        applyTheme(state.themeBg, state.themeText, uid);
+      }
+    }
 
     await checkIconBucket();
     await reloadAll();
