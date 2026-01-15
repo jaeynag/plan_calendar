@@ -868,6 +868,7 @@ function applyProgressDeltas(addedIds, removedIds) {
   }
 
   function renderIcons() {
+    const order = new Map(state.habits.map((h, idx) => [h.id, idx]));
     $$(".day-dots").forEach((el) => {
       el.className = "day-dots";
       const date = el.getAttribute("data-date");
@@ -875,6 +876,9 @@ function applyProgressDeltas(addedIds, removedIds) {
       if (!ids.length) { el.innerHTML = ""; return; }
 
       const uniqIds = Array.from(new Set(ids));
+      // 항상 같은 순서로 보이게: 습관 등록(생성) 순서 기준 정렬
+      uniqIds.sort((a, b) => (order.get(a) ?? 1e9) - (order.get(b) ?? 1e9));
+
       const shown = uniqIds.slice(0, 6); // 2열 * 3줄
 
       if (shown.length === 1) el.classList.add("single");
@@ -884,11 +888,16 @@ function applyProgressDeltas(addedIds, removedIds) {
       for (const hid of shown) {
         const h = getHabitById(hid);
         if (h?.icon_url) {
-          parts.push(`<img class="icon-img" src="${escapeHtml(h.icon_url)}" alt="" />`);
+          parts.push(`<span class="dot"><img class="icon-img" src="${escapeHtml(h.icon_url)}" alt="" /></span>`);
         } else {
           const emo = (h?.emoji || "✅").trim() || "✅";
-          parts.push(`<span class="icon-emoji" aria-hidden="true">${escapeHtml(emo)}</span>`);
+          parts.push(`<span class="dot"><span class="icon-emoji" aria-hidden="true">${escapeHtml(emo)}</span></span>`);
         }
+      }
+      el.innerHTML = parts.join("");
+    });
+  }
+
       }
       el.innerHTML = parts.join("");
     });
