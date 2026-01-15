@@ -9,6 +9,17 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+  // 상태 메시지 출력(없으면 콘솔로만)
+  function setFoot(msg) {
+    const el =
+      document.getElementById("settingsMsg") ||
+      document.getElementById("footStatus") ||
+      document.querySelector(".foot-status");
+    if (el) el.textContent = String(msg || "");
+    else console.log("[status]", msg);
+  }
+
+
   // ✅ 버킷 이름: 사용자 말대로 habit_icon
   const ICON_BUCKET = "habit_icons";
 
