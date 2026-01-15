@@ -743,6 +743,7 @@ button{
   display:flex;
   justify-content:flex-end;
   padding-top: 6px;
+  gap: 8px;
 }
 
 /* ---------- Cropper stage ---------- */
