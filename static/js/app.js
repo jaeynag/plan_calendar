@@ -10,14 +10,29 @@
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
   // 상태 메시지 출력(없으면 콘솔로만)
-  function setFoot(msg) {
+  function setFoot(msg, kind = "info", autoClearMs = 0) {
     const el =
       document.getElementById("settingsMsg") ||
       document.getElementById("footStatus") ||
       document.querySelector(".foot-status");
-    if (el) el.textContent = String(msg || "");
-    else console.log("[status]", msg);
+
+    const text = String(msg || "");
+    if (el) {
+      el.textContent = text;
+      // kind: info | ok | err
+      el.dataset.kind = kind;
+      if (autoClearMs && text) {
+        window.clearTimeout(setFoot._t);
+        setFoot._t = window.setTimeout(() => {
+          el.textContent = "";
+          el.dataset.kind = "info";
+        }, autoClearMs);
+      }
+    } else {
+      console.log("[status]", msg);
+    }
   }
+
 
 
   // ✅ 버킷 이름: 사용자 말대로 habit_icon
@@ -348,6 +363,7 @@
     $("#btnSettings").addEventListener("click", async () => {
       await refreshSession();
       const uid = state.session?.user?.id || null;
+      setFoot("", "info");
       $("#settingsEmail").textContent = state.session?.user?.email || "-";
       $("#themeBg").value = state.themeBg || THEME_DEFAULT_BG;
       $("#themeText").value = state.themeText || THEME_DEFAULT_TEXT;
@@ -377,18 +393,18 @@
       await refreshSession();
       const uid = state.session?.user?.id || null;
       if (!uid) {
-        setFoot("로그인 후 저장할 수 있어");
+        setFoot("로그인 후 저장할 수 있어", "err", 3000);
         return;
       }
       const btn = $("#btnThemeSave");
       btn.disabled = true;
-      setFoot("테마 저장중...");
+      setFoot("테마 저장중...", "info");
       try {
         await saveThemeToDb(uid, state.themeBg, state.themeText);
-        setFoot("테마 저장 완료");
+        setFoot("테마 저장 완료", "ok", 2000);
       } catch (e) {
         console.warn("theme save db failed:", e);
-        setFoot("테마 저장 실패");
+        setFoot("테마 저장 실패", "err", 4000);
       } finally {
         btn.disabled = false;
       }
