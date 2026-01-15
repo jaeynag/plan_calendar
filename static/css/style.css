@@ -915,4 +915,16 @@ button{
   .progress-item .pi-text{ font-size: 12.5px; }
 }
 
-
+/* settings save message */
+.settings-msg{
+  margin-top: 10px;
+  min-height: 18px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+.settings-msg[data-kind="ok"]{
+  color: #22c55e;
+}
+.settings-msg[data-kind="err"]{
+  color: #e11d48;
+}
